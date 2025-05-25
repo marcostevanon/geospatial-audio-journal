@@ -1,5 +1,5 @@
 {
-  "name": "telegram-api",
+  "name": "telegram-emotion-app",
   "version": "1.0.0",
   "description": "Telegram MTProto API integration for downloading voice messages",
   "main": "dist/index.js",
