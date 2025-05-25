@@ -5,7 +5,7 @@ import os
 import torch
 import librosa
 import numpy as np
-from transformers import AutoModelForAudioClassification, AutoFeatureExtractor
+from transformers import AutoModelForAudioClassification, AutoFeatureExtractor, AutoModelForSpeechSeq2Seq, AutoProcessor
 from speechbrain.inference.classifiers import EncoderClassifier
 
 app = FastAPI()
@@ -22,8 +22,17 @@ app.add_middleware(
 # Initialize both models
 # Whisper model (8 emotions)
 whisper_model_id = "firdhokk/speech-emotion-recognition-with-openai-whisper-large-v3"
-whisper_model = AutoModelForAudioClassification.from_pretrained(whisper_model_id)
-whisper_feature_extractor = AutoFeatureExtractor.from_pretrained(whisper_model_id, do_normalize=True)
+whisper_model = AutoModelForAudioClassification.from_pretrained(
+    whisper_model_id,
+    force_download=False,
+    local_files_only=False
+)
+whisper_model.gradient_checkpointing_enable()
+whisper_feature_extractor = AutoFeatureExtractor.from_pretrained(
+    whisper_model_id,
+    force_download=False,
+    local_files_only=False
+)
 whisper_id2label = whisper_model.config.id2label
 
 # SpeechBrain model (4 emotions)
