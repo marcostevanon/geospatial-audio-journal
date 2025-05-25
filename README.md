@@ -1,68 +1,105 @@
-# Telegram Voice Message Downloader
+# Telegram Voice Message Emotion Analyzer
 
-A TypeScript Node.js application that downloads voice messages from specified Telegram chats using the MTProto API.
+This project analyzes voice messages from Telegram using two different emotion recognition models:
+1. Whisper Large V3 (8 emotions)
+2. SpeechBrain IEMOCAP (4 emotions)
+
+## Features
+
+- Downloads and analyzes voice messages from Telegram
+- Uses Python FastAPI microservice for emotion analysis
+- Provides detailed audio analysis (duration, bitrate, sample rate, etc.)
+- Generates waveform visualization
+- Supports multiple emotion recognition models
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
-- npm
-- Telegram API credentials (API ID and API Hash)
+- Node.js 16+ and npm
+- Python 3.9+
+- FFmpeg (for audio processing)
+- Telegram API credentials
 
 ## Setup
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create a `.env` file in the root directory with the following content:
-   ```
-   API_ID=your_api_id
-   API_HASH=your_api_hash
-   PHONE_NUMBER=your_phone_number
-   TARGET_CHAT_IDS=chat_id1,chat_id2
-   ```
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd telegram-api
+```
 
-   To get your API credentials:
-   1. Visit https://my.telegram.org/auth
-   2. Log in with your phone number
-   3. Go to 'API development tools'
-   4. Create a new application
-   5. Copy the API ID and API Hash
+2. Install Node.js dependencies:
+```bash
+npm install
+```
+
+3. Set up Python environment:
+```bash
+# Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install Python dependencies
+cd seraas-python
+pip install -r requirements.txt
+```
+
+4. Create a `.env` file in the root directory with your Telegram API credentials:
+```env
+API_ID=your_api_id
+API_HASH=your_api_hash
+PHONE_NUMBER=your_phone_number
+PASSWORD=your_2fa_password  # Optional
+SESSION_STRING=your_session_string  # Optional
+TARGET_CHAT_ID=target_chat_id
+```
 
 ## Usage
 
-1. Build the project:
-   ```bash
-   npm run build
-   ```
+1. Start the Python emotion analysis service:
+```bash
+cd seraas-python
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uvicorn main:app --reload
+```
 
-2. Run the application:
-   ```bash
-   npm start
-   ```
+2. In a new terminal, run the Node.js application:
+```bash
+npm run dev
+```
 
-   Or for development:
-   ```bash
-   npm run dev
-   ```
-
-The application will:
-1. Connect to Telegram
-2. Process each specified chat
-3. Download all voice messages
-4. Save them in the `downloads/<chat_id>` directory
+3. The application will:
+   - Connect to Telegram
+   - Download the latest voice message from the target chat
+   - Analyze the audio using both emotion recognition models
+   - Display detailed analysis results
 
 ## Project Structure
 
-- `src/`
-  - `index.ts` - Main entry point
-  - `config.ts` - Configuration and environment variables
-  - `telegramClient.ts` - Telegram MTProto client implementation
-  - `types/` - TypeScript type definitions
+```
+.
+├── src/                    # Node.js application
+│   ├── index.ts           # Main application logic
+│   ├── config.ts          # Configuration management
+│   ├── seraas-client.ts   # Python service client
+│   └── types.ts           # TypeScript type definitions
+├── seraas-python/         # Python emotion analysis service
+│   ├── main.py           # FastAPI application
+│   └── requirements.txt   # Python dependencies
+└── .env                   # Environment variables
+```
 
-## Notes
+## Dependencies
 
-- Voice messages are saved in OGG format
-- Files are named `voice_<message_id>.ogg`
-- The application creates a separate directory for each chat's downloads 
+### Node.js
+- telegram: Telegram client library
+- axios: HTTP client
+- form-data: Form data handling
+- typescript: TypeScript support
+
+### Python
+- fastapi: Web framework
+- uvicorn: ASGI server
+- transformers: Hugging Face transformers
+- speechbrain: Speech processing toolkit
+- torch: PyTorch
+- librosa: Audio processing
