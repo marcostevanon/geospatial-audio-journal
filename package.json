@@ -1,0 +1,32 @@
+{
+  "name": "telegram-api",
+  "version": "1.0.0",
+  "description": "Telegram MTProto API integration for downloading voice messages",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "watch": "tsc -w"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "@types/form-data": "^2.2.1",
+    "@xenova/transformers": "^2.17.2",
+    "dotenv": "^16.4.5",
+    "ffmpeg-static": "^5.2.0",
+    "form-data": "^4.0.2",
+    "input": "^1.0.1",
+    "telegram": "^2.26.22",
+    "telegram-mtproto": "^2.2.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21"
+  }
+}
