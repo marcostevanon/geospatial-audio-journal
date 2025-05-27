@@ -35,7 +35,7 @@ ENV/
 .DS_Store
 
 # Project specific
-seraas-python/pretrained_models/
+emotion-analysis-service/pretrained_models/
 wav2vec2_checkpoints/
 *.wav
 *.ogg
@@ -64,3 +64,5 @@ build/
 .env
 .env.local
 .env.*.local 
+
+data/

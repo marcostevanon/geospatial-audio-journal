@@ -24,7 +24,7 @@ This project analyzes voice messages from Telegram using two different emotion r
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd telegram-api
+cd telegram-emotion-app
 ```
 
 2. Install Node.js dependencies:
@@ -39,7 +39,7 @@ python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install Python dependencies
-cd seraas-python
+cd emotion-analysis-service
 pip install -r requirements.txt
 ```
 
@@ -57,7 +57,7 @@ TARGET_CHAT_ID=target_chat_id
 
 1. Start the Python emotion analysis service:
 ```bash
-cd seraas-python
+cd emotion-analysis-service
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uvicorn main:app --reload
 ```
@@ -82,7 +82,7 @@ npm run dev
 │   ├── config.ts          # Configuration management
 │   ├── seraas-client.ts   # Python service client
 │   └── types.ts           # TypeScript type definitions
-├── seraas-python/         # Python emotion analysis service
+├── emotion-analysis-service/         # Python emotion analysis service
 │   ├── main.py           # FastAPI application
 │   └── requirements.txt   # Python dependencies
 └── .env                   # Environment variables
