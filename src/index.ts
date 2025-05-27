@@ -6,8 +6,8 @@ import { promisify } from "util";
 import * as fs from "fs";
 import * as path from "path";
 import { pipeline } from "@xenova/transformers";
-import { getEmotionsFromPython } from "./seraas-client";
-import { AudioAnalysis, Emotion } from "./types";
+import { getEmotionsFromPython, getTextEmotionsFromPython } from "./seraas-client";
+import { AudioAnalysis, TextAnalysis, Emotion } from "./types";
 
 const execAsync = promisify(exec);
 
@@ -20,24 +20,24 @@ async function analyzeAudio(buffer: Buffer): Promise<AudioAnalysis> {
     fs.writeFileSync(tempFile, buffer);
 
     // Get audio information using ffprobe
-    const { stdout } = await execAsync(
-      `ffprobe -v quiet -print_format json -show_format -show_streams ${tempFile}`
-    );
-    const info = JSON.parse(stdout);
+    // const { stdout } = await execAsync(
+    //   `ffprobe -v quiet -print_format json -show_format -show_streams ${tempFile}`
+    // );
+    // const info = JSON.parse(stdout);
 
     // Extract audio stream info
-    const audioStream = info.streams.find((s: any) => s.codec_type === "audio");
-    const format = info.format;
+    // const audioStream = info.streams.find((s: any) => s.codec_type === "audio");
+    // const format = info.format;
 
     // Generate waveform data
-    await execAsync(
-      `ffmpeg -i ${tempFile} -filter_complex "showwavespic=s=640x120:colors=white" -frames:v 1 waveform.png`
-    );
+    // await execAsync(
+    //   `ffmpeg -i ${tempFile} -filter_complex "showwavespic=s=640x120:colors=white" -frames:v 1 waveform.png`
+    // );
 
     // Read waveform data
-    const waveform = fs.existsSync("waveform.png")
-      ? fs.readFileSync("waveform.png")
-      : undefined;
+    // const waveform = fs.existsSync("waveform.png")
+    //   ? fs.readFileSync("waveform.png")
+    //   : undefined;
 
     console.log("Using Python microservice...");
 
@@ -45,17 +45,7 @@ async function analyzeAudio(buffer: Buffer): Promise<AudioAnalysis> {
     const emotions = await getEmotionsFromPython(tempFile);
     console.log("Emotions:", emotions);
 
-    return {
-      duration: parseFloat(format.duration),
-      bitrate: parseInt(format.bit_rate),
-      sampleRate: parseInt(audioStream.sample_rate),
-      channels: audioStream.channels,
-      codec: audioStream.codec_name,
-      format: format.format_name,
-      size: buffer.length,
-      waveform: waveform ? Array.from(waveform) : undefined,
-      emotions,
-    };
+    return emotions;
   } finally {
     // Cleanup temporary files
     if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
@@ -71,27 +61,31 @@ function printEmotionAnalysis(emotions: Emotion[]): void {
 
 function printAudioAnalysis(analysis: AudioAnalysis): void {
   console.log("\nAudio Analysis:");
-  console.log(`Duration: ${analysis.duration.toFixed(2)} seconds`);
-  console.log(`Bitrate: ${(analysis.bitrate / 1000).toFixed(2)} kbps`);
-  console.log(`Sample Rate: ${analysis.sampleRate} Hz`);
-  console.log(`Channels: ${analysis.channels}`);
-  console.log(`Codec: ${analysis.codec}`);
-  console.log(`Format: ${analysis.format}`);
-  console.log(`Size: ${(analysis.size / 1024).toFixed(2)} KB`);
+  
+  console.log("\nWhisper Model (8 emotions):");
+  printEmotionAnalysis(analysis.whisper_model.emotions);
+  
+  console.log("\nSpeechBrain Model (4 emotions):");
+  printEmotionAnalysis(analysis.speechbrain_model.emotions);
 
-  if (analysis.emotions) {
-    console.log("\nEmotion Analysis:");
-    
-    console.log("\nWhisper Model (8 emotions):");
-    printEmotionAnalysis(analysis.emotions.whisper_model.emotions);
-    
-    console.log("\nSpeechBrain Model (4 emotions):");
-    printEmotionAnalysis(analysis.emotions.speechbrain_model.emotions);
-  }
+  console.log("\nTranscription:");
+  console.log(`Language: ${analysis.transcription.language}`);
+  console.log(`Full Text: ${analysis.transcription.transcription}`);
+  console.log("\nSegments:");
+  analysis.transcription.segments.forEach((segment, index) => {
+    console.log(`\nSegment ${index + 1}:`);
+    console.log(`Time: ${segment.start.toFixed(2)}s - ${segment.end.toFixed(2)}s`);
+    console.log(`Text: ${segment.text}`);
+    if (segment.confidence !== null) {
+      console.log(`Confidence: ${(segment.confidence * 100).toFixed(2)}%`);
+    }
+  });
+}
 
-  if (analysis.waveform) {
-    console.log("Waveform data available");
-  }
+function printTextAnalysis(analysis: TextAnalysis): void {
+  console.log("\nText Emotion Analysis:");
+  console.log(`Model: ${analysis.text_emotions.model}`);
+  printEmotionAnalysis(analysis.text_emotions.emotions);
 }
 
 async function main() {
@@ -136,9 +130,16 @@ async function main() {
         if (buffer && Buffer.isBuffer(buffer)) {
           const analysis = await analyzeAudio(buffer);
           printAudioAnalysis(analysis);
+
+          // Also analyze the transcribed text
+          const textAnalysis = await getTextEmotionsFromPython(analysis.transcription.transcription);
+          printTextAnalysis(textAnalysis);
         }
       } else if (msg.message) {
         console.log(`- ${msg.senderId}: ${msg.message}`);
+        // Analyze text message
+        const textAnalysis = await getTextEmotionsFromPython(msg.message);
+        printTextAnalysis(textAnalysis);
       }
     }
   } catch (error) {

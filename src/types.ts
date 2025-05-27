@@ -7,6 +7,14 @@ export interface EmotionAnalysis {
     model: string;
     emotions: Emotion[];
   };
+  transcription: Transcription;
+}
+
+export interface TextAnalysis {
+  text_emotions: {
+    model: string;
+    emotions: Emotion[];
+  };
 }
 
 export interface Emotion {
@@ -14,16 +22,29 @@ export interface Emotion {
   confidence: number;
 }
 
+export interface Transcription {
+  transcription: string;
+  language: string;
+  segments: TranscriptionSegment[];
+}
+
+export interface TranscriptionSegment {
+  text: string;
+  start: number;
+  end: number;
+  confidence: number | null;
+}
+
 export interface AudioAnalysis {
-  duration: number;
-  bitrate: number;
-  sampleRate: number;
-  channels: number;
-  codec: string;
-  format: string;
-  size: number;
-  waveform?: number[];
-  emotions?: EmotionAnalysis;
+  whisper_model: {
+    model: string;
+    emotions: Emotion[];
+  };
+  speechbrain_model: {
+    model: string;
+    emotions: Emotion[];
+  };
+  transcription: Transcription;
 }
 
 export interface Config {
