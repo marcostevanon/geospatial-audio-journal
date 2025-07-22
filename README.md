@@ -1,105 +1,61 @@
 # Telegram Voice Message Emotion Analyzer
 
-This project analyzes voice messages from Telegram using two different emotion recognition models:
-1. Whisper Large V3 (8 emotions)
-2. SpeechBrain IEMOCAP (4 emotions)
+Analyze emotions in Telegram voice messages using advanced AI models. This application downloads voice messages from Telegram and provides detailed emotion analysis using two different AI models.
 
-## Features
+## Quick Start
 
-- Downloads and analyzes voice messages from Telegram
-- Uses Python FastAPI microservice for emotion analysis
-- Provides detailed audio analysis (duration, bitrate, sample rate, etc.)
-- Generates waveform visualization
-- Supports multiple emotion recognition models
-
-## Prerequisites
-
-- Node.js 16+ and npm
-- Python 3.9+
-- FFmpeg (for audio processing)
-- Telegram API credentials
-
-## Setup
-
-1. Clone the repository:
+1. Clone and install dependencies:
 ```bash
 git clone <repository-url>
 cd telegram-emotion-app
-```
-
-2. Install Node.js dependencies:
-```bash
 npm install
 ```
 
-3. Set up Python environment:
+2. Set up Python environment:
 ```bash
-# Create and activate virtual environment
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install Python dependencies
 cd emotion-analysis-service
 pip install -r requirements.txt
 ```
 
-4. Create a `.env` file in the root directory with your Telegram API credentials:
+3. Create `.env` file with your Telegram credentials:
 ```env
 API_ID=your_api_id
 API_HASH=your_api_hash
 PHONE_NUMBER=your_phone_number
-PASSWORD=your_2fa_password  # Optional
-SESSION_STRING=your_session_string  # Optional
 TARGET_CHAT_ID=target_chat_id
 ```
 
-## Usage
-
-1. Start the Python emotion analysis service:
+4. Start the services:
 ```bash
+# Terminal 1 - Start Python service
 cd emotion-analysis-service
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uvicorn main:app --reload
-```
 
-2. In a new terminal, run the Node.js application:
-```bash
+# Terminal 2 - Start Node.js app
 npm run dev
 ```
 
-3. The application will:
-   - Connect to Telegram
-   - Download the latest voice message from the target chat
-   - Analyze the audio using both emotion recognition models
-   - Display detailed analysis results
+## Features
 
-## Project Structure
+- 🎙️ Voice message analysis from Telegram
+- 🤖 Dual AI model analysis (Whisper V3 & SpeechBrain)
+- 📊 Detailed audio analysis and visualization
+- 🔄 Real-time processing
+- 📱 Easy-to-use interface
 
-```
-.
-├── src/                    # Node.js application
-│   ├── index.ts           # Main application logic
-│   ├── config.ts          # Configuration management
-│   ├── seraas-client.ts   # Python service client
-│   └── types.ts           # TypeScript type definitions
-├── emotion-analysis-service/         # Python emotion analysis service
-│   ├── main.py           # FastAPI application
-│   └── requirements.txt   # Python dependencies
-└── .env                   # Environment variables
-```
+## Requirements
 
-## Dependencies
+- Node.js 16+
+- Python 3.9+
+- FFmpeg
+- Telegram API credentials
 
-### Node.js
-- telegram: Telegram client library
-- axios: HTTP client
-- form-data: Form data handling
-- typescript: TypeScript support
+## Documentation
 
-### Python
-- fastapi: Web framework
-- uvicorn: ASGI server
-- transformers: Hugging Face transformers
-- speechbrain: Speech processing toolkit
-- torch: PyTorch
-- librosa: Audio processing
+For detailed technical documentation, see the [docs](./docs) folder.
+
+## License
+
+[Add your license here]

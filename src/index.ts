@@ -6,8 +6,8 @@ import { promisify } from "util";
 import * as fs from "fs";
 import * as path from "path";
 import { pipeline } from "@xenova/transformers";
-import { getEmotionsFromPython, getTextEmotionsFromPython } from "./seraas-client";
-import { AudioAnalysis, TextAnalysis, Emotion } from "./types";
+import { getEmotionsFromPython, getTextEmotionsFromPython, getGPT4TextEmotions } from "./seraas-client";
+import { AudioAnalysis, TextAnalysis, Emotion, GPT4TextAnalysis } from "./types";
 
 const execAsync = promisify(exec);
 
@@ -88,6 +88,15 @@ function printTextAnalysis(analysis: TextAnalysis): void {
   printEmotionAnalysis(analysis.text_emotions.emotions);
 }
 
+function printGPT4Analysis(analysis: GPT4TextAnalysis): void {
+  console.log("\nGPT-4 Emotion Analysis:");
+  console.log(`Model: ${analysis.gpt4_analysis.model}`);
+  const emotions = analysis.gpt4_analysis.emotions;
+  Object.entries(emotions).forEach(([emotion, percentage]) => {
+    console.log(`${emotion}: ${percentage.toFixed(2)}%`);
+  });
+}
+
 async function main() {
   try {
     // Create a new Telegram client
@@ -134,12 +143,20 @@ async function main() {
           // Also analyze the transcribed text
           const textAnalysis = await getTextEmotionsFromPython(analysis.transcription.transcription);
           printTextAnalysis(textAnalysis);
+
+          // Get GPT-4 analysis of the transcribed text
+          const gpt4Analysis = await getGPT4TextEmotions(analysis.transcription.transcription);
+          printGPT4Analysis(gpt4Analysis);
         }
       } else if (msg.message) {
         console.log(`- ${msg.senderId}: ${msg.message}`);
         // Analyze text message
         const textAnalysis = await getTextEmotionsFromPython(msg.message);
         printTextAnalysis(textAnalysis);
+
+        // Get GPT-4 analysis of the text message
+        const gpt4Analysis = await getGPT4TextEmotions(msg.message);
+        printGPT4Analysis(gpt4Analysis);
       }
     }
   } catch (error) {

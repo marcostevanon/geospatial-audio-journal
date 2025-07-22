@@ -17,6 +17,20 @@ export interface TextAnalysis {
   };
 }
 
+export interface GPT4TextAnalysis {
+  gpt4_analysis: {
+    model: string;
+    emotions: {
+      sadness: number;
+      joy: number;
+      love: number;
+      surprise: number;
+      fear: number;
+      anger: number;
+    };
+  };
+}
+
 export interface Emotion {
   emotion: string;
   confidence: number;

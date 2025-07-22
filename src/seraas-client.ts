@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as fs from 'fs';
 import FormData from 'form-data';
-import { EmotionAnalysis, AudioAnalysis, TextAnalysis } from './types';
+import { EmotionAnalysis, AudioAnalysis, TextAnalysis, GPT4TextAnalysis } from './types';
 
 const SERAAS_URL = 'http://127.0.0.1:8000';
 
@@ -23,7 +23,7 @@ export async function getEmotionsFromPython(audioPath: string): Promise<AudioAna
   try {
     const response = await axios.post(`${SERAAS_URL}/analyze/audio`, formData, {
       headers: formData.getHeaders(),
-      timeout: 220000, // 2 minute timeout
+      timeout: 10 * 60 * 1000, // 10 minute timeout
       onUploadProgress: (progressEvent) => {
         const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
         console.log(`Upload progress: ${percentCompleted}%`);
@@ -51,12 +51,33 @@ export async function getTextEmotionsFromPython(text: string): Promise<TextAnaly
     const response = await axios.post(`${SERAAS_URL}/analyze/text`, {
       text: text
     }, {
-      timeout: 10000, // 10 second timeout
+      timeout: 10 * 60 * 1000, // 10 minute timeout
     });
 
     console.log("Text analysis completed successfully");
     return response.data as TextAnalysis;
   } catch (error) {
     throw new Error(`Failed to analyze text: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Sends text to the local FastAPI SERaaS microservice for GPT-4 emotion analysis.
+ * @param text Text to analyze
+ * @returns Object containing GPT-4 emotion analysis
+ */
+export async function getGPT4TextEmotions(text: string): Promise<GPT4TextAnalysis> {
+  console.log("Sending text for GPT-4 analysis...");
+  try {
+    const response = await axios.post(`${SERAAS_URL}/analyze/text/gpt4`, {
+      text: text
+    }, {
+      timeout: 10 * 60 * 1000, // 10 minute timeout
+    });
+
+    console.log("GPT-4 text analysis completed successfully");
+    return response.data as GPT4TextAnalysis;
+  } catch (error) {
+    throw new Error(`Failed to analyze text with GPT-4: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 } 

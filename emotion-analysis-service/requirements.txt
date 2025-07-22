@@ -17,3 +17,9 @@ urllib3<2.0.0
 openai-whisper
 scikit-learn
 sentencepiece
+openai>=1.0.0
+accelerate>=0.21.0
+bitsandbytes>=0.41.0
+safetensors>=0.3.1
+einops>=0.6.1
+xformers>=0.0.20
