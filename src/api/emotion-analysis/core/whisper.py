@@ -94,9 +94,8 @@ def analyze_and_aggregate_emotions(audio_array: np.ndarray, sample_rate: int = 1
         emotions = get_emotions_from_audio(chunk)
         for e in emotions:
             emotion_scores[e["emotion"]].append(e["confidence"])
-    # Aggregate by averaging
     aggregated = {
-        emotion: float(np.mean(scores)) for emotion, scores in emotion_scores.items()
+        emotion: round(float(np.mean(scores)), 2) for emotion, scores in emotion_scores.items()
     }
     logger.info(f"Aggregated emotion scores: {aggregated}")
     return aggregated
