@@ -35,14 +35,11 @@ ENV/
 .DS_Store
 
 # Project specific
+data/
+.cache
+
 emotion-analysis-service/pretrained_models/
 wav2vec2_checkpoints/
-*.wav
-*.ogg
-*.mp3
-*.m4a
-*.flac
-*.aac
 
 # Logs
 *.log
@@ -64,5 +61,3 @@ build/
 .env
 .env.local
 .env.*.local 
-
-data/
