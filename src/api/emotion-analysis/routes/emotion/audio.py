@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
-from core.whisper import analyze_and_aggregate_emotions
+from core.whisper_emotion_rec import analyze_and_aggregate_emotions as whisper_analyze_and_aggregate_emotions
+from core.speechbrain_emotion_rec import analyze_and_aggregate_emotions as speechbrain_analyze_and_aggregate_emotions
 import tempfile, os
 import librosa
 
@@ -18,20 +19,16 @@ def load_audio(file: UploadFile) -> tuple:
     return audio_array, sampling_rate
 
 
-def analyze_emotions(audio_array, sampling_rate):
-    """Placeholder for emotion analysis logic."""
-    print(sampling_rate)
-
-    emotions = analyze_and_aggregate_emotions(audio_array)
-    return emotions
-
-
 @router.post("/emotion/audio")
 async def analyze_audio_emotion(file: UploadFile = File(...)):
-    """Analyze audio file for emotions."""
+    """Analyze audio file for emotions using both Whisper and SpeechBrain."""
     try:
         audio_array, sampling_rate = load_audio(file)
-        emotions = analyze_emotions(audio_array, sampling_rate)
-        return JSONResponse(content={"emotions": emotions})
+        whisper_emotions = whisper_analyze_and_aggregate_emotions(audio_array, sample_rate=sampling_rate)
+        speechbrain_emotions = speechbrain_analyze_and_aggregate_emotions(audio_array, sample_rate=sampling_rate)
+        return JSONResponse(content={
+            "whisper": whisper_emotions,
+            "speechbrain": speechbrain_emotions
+        })
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

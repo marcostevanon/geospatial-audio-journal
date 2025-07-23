@@ -1,32 +1,37 @@
 import numpy as np
 import torch
-from transformers import AutoModelForAudioClassification, AutoFeatureExtractor
+from speechbrain.inference.classifiers import EncoderClassifier
 from collections import defaultdict
 import logging
 
 logger = logging.getLogger(__name__)
 
-WHISPER_MODEL_ID = "firdhokk/speech-emotion-recognition-with-openai-whisper-large-v3"
-whisper_model = AutoModelForAudioClassification.from_pretrained(
-    WHISPER_MODEL_ID, force_download=False, cache_dir=".cache/models"
-)
-whisper_feature_extractor = AutoFeatureExtractor.from_pretrained(WHISPER_MODEL_ID)
+SPEECHBRAIN_MODEL_ID = ".cache/emotion-recognition-wav2vec2-IEMOCAP"
+SPEECHBRAIN_MODEL_DIR = ".cache/speechbrain/emotion-recognition-wav2vec2-IEMOCAP"
+SPEECHBRAIN_AUTH_TOKEN = "***REMOVED***"
 
+speechbrain_model = EncoderClassifier.from_hparams(
+    source=SPEECHBRAIN_MODEL_ID,
+    savedir=SPEECHBRAIN_MODEL_DIR,
+    run_opts={"device": "cpu"},
+    use_auth_token=SPEECHBRAIN_AUTH_TOKEN
+)
 
 def get_emotions_from_audio(
     audio_array: np.ndarray,
-    max_duration: float = 30.0,  # 30 seconds is typical for Whisper
+    max_duration: float = 30.0,  # 30 seconds typical
+    sample_rate: int = 16000,
 ):
     """
-    Get emotion predictions from a Whisper-based model.
+    Get emotion predictions from SpeechBrain model.
     Returns a list of dicts: [{"emotion": str, "confidence": float}, ...]
     """
     logger.info(f"Analyzing audio chunk of length {len(audio_array)} samples.")
     # Convert to mono if needed
     if len(audio_array.shape) > 1:
         audio_array = np.mean(audio_array, axis=0)
-    # Pad or truncate to 30 seconds (480,000 samples at 16kHz)
-    target_length = int(whisper_feature_extractor.sampling_rate * max_duration)
+    # Pad or truncate to max_duration
+    target_length = int(sample_rate * max_duration)
     if len(audio_array) == target_length:
         audio_array = audio_array
     elif len(audio_array) < target_length:
@@ -39,30 +44,30 @@ def get_emotions_from_audio(
             f"Truncating audio from {len(audio_array)} to {target_length} samples."
         )
         audio_array = audio_array[:target_length]
-    # Feature extraction
-    inputs = whisper_feature_extractor(
-        audio_array,
-        sampling_rate=whisper_feature_extractor.sampling_rate,
-        return_tensors="pt",
-    )
+    # Preprocess for SpeechBrain
+    waveform = torch.FloatTensor(audio_array)
+    if waveform.abs().max() > 0:
+        waveform = waveform / waveform.abs().max()
+    if waveform.ndim > 1:
+        waveform = waveform.mean(dim=1)
+    waveform = waveform.unsqueeze(0)
     # Model inference
-    with torch.no_grad():
-        outputs = whisper_model(**inputs)
-    probs = torch.nn.functional.softmax(outputs.logits, dim=-1).squeeze().tolist()
+    wav_lens = torch.tensor([1.0])
+    feats = speechbrain_model.mods.wav2vec2(waveform, wav_lens)
+    outputs = speechbrain_model.mods.output_mlp(feats)
+    probs = torch.nn.functional.softmax(outputs, dim=-1)
+    probs = probs.mean(dim=1).squeeze().tolist()
     # Top emotions
     top_k = min(5, len(probs))
     top_k_idx = torch.topk(torch.tensor(probs), top_k).indices.tolist()
-    # logger.info(
-    #     f"Top emotions: {[whisper_model.config.id2label[idx] for idx in top_k_idx]}"
-    # )
+    valid_indices = [idx for idx in top_k_idx if idx in speechbrain_model.hparams.label_encoder.ind2lab]
     return [
         {
-            "emotion": whisper_model.config.id2label[idx],
+            "emotion": speechbrain_model.hparams.label_encoder.ind2lab[idx],
             "confidence": float(probs[idx]) * 100,
         }
-        for idx in top_k_idx
+        for idx in valid_indices
     ]
-
 
 def split_audio_into_chunks(
     audio_array: np.ndarray, chunk_duration_sec: float = 30.0, sample_rate: int = 16000
@@ -80,18 +85,17 @@ def split_audio_into_chunks(
     )
     return chunks
 
-
 def analyze_and_aggregate_emotions(audio_array: np.ndarray, sample_rate: int = 16000):
     """
     Split audio, analyze each chunk, and aggregate emotion confidences by averaging.
     Returns a dict: {emotion: avg_confidence}
     """
-    logger.info("Starting audio analysis and aggregation.")
+    logger.info("Starting audio analysis and aggregation (SpeechBrain).")
     chunks = split_audio_into_chunks(audio_array, 30.0, sample_rate)
     emotion_scores = defaultdict(list)
     for i, chunk in enumerate(chunks):
         logger.info(f"Analyzing chunk {i+1}/{len(chunks)}.")
-        emotions = get_emotions_from_audio(chunk)
+        emotions = get_emotions_from_audio(chunk, sample_rate=sample_rate)
         for e in emotions:
             emotion_scores[e["emotion"]].append(e["confidence"])
     aggregated = {
