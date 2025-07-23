@@ -1,5 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
+from core.speech_to_text.whisper import transcribe_audio
 from core.speech_emotion_recognition.whisper import (
     analyze_and_aggregate_emotions as whisper_analyze_and_aggregate_emotions,
 )
@@ -8,9 +9,10 @@ from core.speech_emotion_recognition.speechbrain import (
 )
 import tempfile, os
 import librosa
+import numpy as np
 import time
 
-router = APIRouter()
+audio_router = APIRouter()
 
 
 def load_audio(file: UploadFile) -> tuple:
@@ -24,7 +26,25 @@ def load_audio(file: UploadFile) -> tuple:
     return audio_array, sampling_rate
 
 
-@router.post("/emotion/audio")
+@audio_router.post("/transcribe")
+async def transcribe_endpoint(file: UploadFile = File(...)):
+    """Transcribe an audio file using Whisper."""
+    try:
+        audio_array, sampling_rate = load_audio(file)
+        start_time = time.time()
+        result = transcribe_audio(audio_array, sample_rate=sampling_rate)
+        transcribe_time = round(time.time() - start_time, 2)
+        if isinstance(result, dict):
+            result["transcribe_time"] = transcribe_time
+            return JSONResponse(content=result)
+        return JSONResponse(
+            content={"result": result, "transcribe_time": transcribe_time}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@audio_router.post("/emotion")
 async def analyze_audio_emotion(file: UploadFile = File(...)):
     """Analyze audio file for emotions using both Whisper and SpeechBrain."""
     try:

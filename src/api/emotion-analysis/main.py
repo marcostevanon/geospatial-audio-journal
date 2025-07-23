@@ -1,10 +1,11 @@
 from fastapi import FastAPI
-from routes.emotion.audio import router
-from routes.transcribe import router as transcribe_router
 import logging
 
+from routes.audio import audio_router
+from routes.text import text_router
+
 app = FastAPI()
-app.include_router(router)
-app.include_router(transcribe_router)
+app.include_router(audio_router, prefix="/api/audio")
+app.include_router(text_router, prefix="/api/text")
 
 logging.basicConfig(level=logging.INFO)
