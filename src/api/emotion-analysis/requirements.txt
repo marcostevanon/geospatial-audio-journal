@@ -6,3 +6,4 @@ numpy
 soundfile
 librosa
 python-multipart
+openai-whisper
