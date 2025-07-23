@@ -1,9 +1,14 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
-from core.whisper_emotion_rec import analyze_and_aggregate_emotions as whisper_analyze_and_aggregate_emotions
-from core.speechbrain_emotion_rec import analyze_and_aggregate_emotions as speechbrain_analyze_and_aggregate_emotions
+from core.speech_emotion_recognition.whisper import (
+    analyze_and_aggregate_emotions as whisper_analyze_and_aggregate_emotions,
+)
+from core.speech_emotion_recognition.speechbrain import (
+    analyze_and_aggregate_emotions as speechbrain_analyze_and_aggregate_emotions,
+)
 import tempfile, os
 import librosa
+import time
 
 router = APIRouter()
 
@@ -24,11 +29,23 @@ async def analyze_audio_emotion(file: UploadFile = File(...)):
     """Analyze audio file for emotions using both Whisper and SpeechBrain."""
     try:
         audio_array, sampling_rate = load_audio(file)
-        whisper_emotions = whisper_analyze_and_aggregate_emotions(audio_array, sample_rate=sampling_rate)
-        speechbrain_emotions = speechbrain_analyze_and_aggregate_emotions(audio_array, sample_rate=sampling_rate)
-        return JSONResponse(content={
-            "whisper": whisper_emotions,
-            "speechbrain": speechbrain_emotions
-        })
+        start_whisper = time.time()
+        whisper_emotions = whisper_analyze_and_aggregate_emotions(
+            audio_array, sample_rate=sampling_rate
+        )
+        whisper_time = time.time() - start_whisper
+        start_speechbrain = time.time()
+        speechbrain_emotions = speechbrain_analyze_and_aggregate_emotions(
+            audio_array, sample_rate=sampling_rate
+        )
+        speechbrain_time = time.time() - start_speechbrain
+        return JSONResponse(
+            content={
+                "whisper": whisper_emotions,
+                "whisper_time": round(whisper_time, 2),
+                "speechbrain": speechbrain_emotions,
+                "speechbrain_time": round(speechbrain_time, 2),
+            }
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

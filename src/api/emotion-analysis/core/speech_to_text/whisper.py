@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # "large-v3" - 1.5B parameters (latest version)
 
 # Load the Whisper model once (medium by default, can be changed)
-WHISPER_MODEL_SIZE = "tiny"
+WHISPER_MODEL_SIZE = "large-v3"
 whisper_model = whisper.load_model(WHISPER_MODEL_SIZE)
 
 
