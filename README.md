@@ -59,3 +59,12 @@ For detailed technical documentation, see the [docs](./docs) folder.
 ## License
 
 [Add your license here]
+
+
+
+### Workflow
+
+- Audio Emotion Analysis
+- Speech to Text Transcription
+- Text Correction
+- Text Emotion Analysis

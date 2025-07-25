@@ -33,12 +33,12 @@ async def transcribe_endpoint(file: UploadFile = File(...)):
         audio_array, sampling_rate = load_audio(file)
         start_time = time.time()
         result = transcribe_audio(audio_array, sample_rate=sampling_rate)
-        transcribe_time = round(time.time() - start_time, 2)
+        execution_time = round(time.time() - start_time, 2)
         if isinstance(result, dict):
-            result["transcribe_time"] = transcribe_time
+            result["execution_time"] = execution_time
             return JSONResponse(content=result)
         return JSONResponse(
-            content={"result": result, "transcribe_time": transcribe_time}
+            content={"result": result, "execution_time": execution_time}
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -62,9 +62,9 @@ async def analyze_audio_emotion(file: UploadFile = File(...)):
         return JSONResponse(
             content={
                 "whisper": whisper_emotions,
-                "whisper_time": round(whisper_time, 2),
+                "whisper_execution_time": round(whisper_time, 2),
                 "speechbrain": speechbrain_emotions,
-                "speechbrain_time": round(speechbrain_time, 2),
+                "speechbrain_execution_time": round(speechbrain_time, 2),
             }
         )
     except Exception as e:
