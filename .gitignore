@@ -37,8 +37,6 @@ ENV/
 # Project specific
 data/
 .cache
-wav2vec2_checkpoints/
-old/
 
 # Logs
 *.log

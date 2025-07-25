@@ -103,20 +103,40 @@ def split_audio_into_chunks(
 
 def analyze_and_aggregate_emotions(audio_array: np.ndarray, sample_rate: int = 16000):
     """
-    Split audio, analyze each chunk, and aggregate emotion confidences by averaging.
-    Returns a dict: {emotion: avg_confidence}
+    Split audio, analyze each chunk, return per-chunk emotions and aggregated averages.
+    Returns:
+        {
+            "per_chunk": [ {emotion1: conf, ...}, ... ],
+            "aggregated": {emotion: avg_confidence, ... }
+        }
     """
     logger.info("Starting audio analysis and aggregation (SpeechBrain).")
     chunks = split_audio_into_chunks(audio_array, 30.0, sample_rate)
     emotion_scores = defaultdict(list)
+    per_chunk = []
+    emotion_labels = list(
+        getattr(speechbrain_model.hparams.label_encoder, "ind2lab", {}).values()
+    )
+    if not emotion_labels:
+        emotion_labels = ["sad", "fearful", "happy", "neutral", "disgust"]
     for i, chunk in enumerate(chunks):
         logger.info(f"Analyzing chunk {i+1}/{len(chunks)}.")
-        emotions = get_emotions_from_audio(chunk, sample_rate=sample_rate)
+        emotions = get_emotions_from_audio(chunk)
+        chunk_dict = {label: 0.0 for label in emotion_labels}
         for e in emotions:
-            emotion_scores[e["emotion"]].append(e["confidence"])
+            if e["emotion"] in chunk_dict:
+                chunk_dict[e["emotion"]] = round(e["confidence"], 2)
+                emotion_scores[e["emotion"]].append(e["confidence"])
+        per_chunk.append(chunk_dict)
+
     aggregated = {
-        emotion: round(float(np.mean(scores)), 2)
-        for emotion, scores in emotion_scores.items()
+        label: (
+            round(float(np.mean(emotion_scores[label])), 2)
+            if emotion_scores[label]
+            else 0.0
+        )
+        for label in emotion_labels
     }
+    aggregated = dict(sorted(aggregated.items(), key=lambda item: item[1], reverse=True))
     logger.info(f"Aggregated emotion scores: {aggregated}")
-    return aggregated
+    return {"per_chunk": per_chunk, "aggregated": aggregated}

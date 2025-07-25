@@ -7,6 +7,7 @@ from routes.text import text_router
 import os
 
 os.environ["HF_HOME"] = ".cache"
+os.environ["SPEECHBRAIN_CACHE"] = ".cache"
 
 app = FastAPI()
 app.include_router(audio_router, prefix="/api/audio")
