@@ -6,7 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Transcription model - using large-v3 for better accuracy
+# Transcription model - use large-v3 for better accuracy
 # "tiny" - 39M parameters (fastest, least accurate)
 # "base" - 74M parameters
 # "small" - 244M parameters
@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 # "large-v2" - 1.5B parameters (improved version)
 # "large-v3" - 1.5B parameters (latest version)
 
-# Load the Whisper model once (medium by default, can be changed)
 WHISPER_MODEL_SIZE = "large-v3"
 whisper_model = whisper.load_model(WHISPER_MODEL_SIZE)
 

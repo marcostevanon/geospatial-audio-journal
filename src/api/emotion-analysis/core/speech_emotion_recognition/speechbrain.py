@@ -1,3 +1,14 @@
+# TODO:
+# High priority:
+# -
+#
+# Low priority:
+# - Add unit tests for get_emotions_from_audio
+# - Handle edge cases (e.g., empty audio, wrong sample rate)
+# - Support GPU inference if available
+# - Add batch processing for multiple audio inputs
+
+
 import numpy as np
 import torch
 from speechbrain.inference.classifiers import EncoderClassifier
@@ -6,16 +17,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-SPEECHBRAIN_MODEL_ID = ".cache/emotion-recognition-wav2vec2-IEMOCAP"
-SPEECHBRAIN_MODEL_DIR = ".cache/speechbrain/emotion-recognition-wav2vec2-IEMOCAP"
-SPEECHBRAIN_AUTH_TOKEN = "***REMOVED***"
+SPEECHBRAIN_MODEL_ID = "speechbrain/emotion-recognition-wav2vec2-IEMOCAP"  # should be HuggingFace model name, not a local path
+SPEECHBRAIN_MODEL_DIR = ".cache/emotion-recognition-wav2vec2-IEMOCAP"
 
 speechbrain_model = EncoderClassifier.from_hparams(
     source=SPEECHBRAIN_MODEL_ID,
     savedir=SPEECHBRAIN_MODEL_DIR,
     run_opts={"device": "cpu"},
-    use_auth_token=SPEECHBRAIN_AUTH_TOKEN
 )
+
 
 def get_emotions_from_audio(
     audio_array: np.ndarray,
@@ -60,7 +70,11 @@ def get_emotions_from_audio(
     # Top emotions
     top_k = min(5, len(probs))
     top_k_idx = torch.topk(torch.tensor(probs), top_k).indices.tolist()
-    valid_indices = [idx for idx in top_k_idx if idx in speechbrain_model.hparams.label_encoder.ind2lab]
+    valid_indices = [
+        idx
+        for idx in top_k_idx
+        if idx in speechbrain_model.hparams.label_encoder.ind2lab
+    ]
     return [
         {
             "emotion": speechbrain_model.hparams.label_encoder.ind2lab[idx],
@@ -68,6 +82,7 @@ def get_emotions_from_audio(
         }
         for idx in valid_indices
     ]
+
 
 def split_audio_into_chunks(
     audio_array: np.ndarray, chunk_duration_sec: float = 30.0, sample_rate: int = 16000
@@ -85,6 +100,7 @@ def split_audio_into_chunks(
     )
     return chunks
 
+
 def analyze_and_aggregate_emotions(audio_array: np.ndarray, sample_rate: int = 16000):
     """
     Split audio, analyze each chunk, and aggregate emotion confidences by averaging.
@@ -99,7 +115,8 @@ def analyze_and_aggregate_emotions(audio_array: np.ndarray, sample_rate: int = 1
         for e in emotions:
             emotion_scores[e["emotion"]].append(e["confidence"])
     aggregated = {
-        emotion: round(float(np.mean(scores)), 2) for emotion, scores in emotion_scores.items()
+        emotion: round(float(np.mean(scores)), 2)
+        for emotion, scores in emotion_scores.items()
     }
     logger.info(f"Aggregated emotion scores: {aggregated}")
     return aggregated
