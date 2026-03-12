@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Body, Query
 from pydantic import BaseModel
 from core.text_emotion_recognition.transformer import get_emotions_from_text
-from core.ollama.correct import correct_text_with_ollama
+from core.ollama.ollama import correct_text_with_ollama, generate_with_ollama
 import time
 import difflib
 
@@ -48,7 +48,20 @@ async def ollama(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# @text_router.post("/generate")
-# async def text_generate_stub():
-#     """Stub for LLM text generation."""
-#     raise HTTPException(status_code=501, detail="Text generation not implemented yet.")
+@text_router.post("/generate")
+async def text_generate(
+    request: TextEmotionRequest,
+    model: str = Query("llama3.2", description="Ollama model to use for generation"),
+):
+    """Generate text using a local Ollama model."""
+    try:
+        start = time.time()
+        result = generate_with_ollama(request.text, model=model)
+        exec_time = round(time.time() - start, 2)
+        return {
+            "result": result,
+            "model": model,
+            "execution_time": exec_time,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

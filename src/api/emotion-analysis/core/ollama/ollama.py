@@ -35,3 +35,17 @@ def correct_text_with_ollama(text: str, model: str = "llama3") -> str:
     )
     result = response.json()
     return result.get("response", "").strip()
+
+
+def generate_with_ollama(text: str, model: str = "llama3") -> str:
+    """
+    Send the input text directly to the Ollama model and return the response.
+    """
+    logger.info(f"Calling Ollama model '{model}' for direct generation.")
+    response = requests.post(
+        OLLAMA_API_URL,
+        json={"model": model, "prompt": text, "stream": False},
+        timeout=30,
+    )
+    result = response.json()
+    return result.get("response", "").strip()
