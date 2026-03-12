@@ -1,5 +1,5 @@
 {
-  "name": "telegram-emotion-app",
+  "name": "geospatial-audio-journal",
   "version": "1.0.0",
   "description": "Telegram MTProto API integration for downloading voice messages",
   "main": "dist/index.js",

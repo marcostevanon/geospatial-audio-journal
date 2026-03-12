@@ -1,4 +1,4 @@
-# AI-Powered Geospatial Audio Journal (formerly emotions-map)
+# AI-Powered Geospatial Audio Journal
 
 Analyze emotions in Telegram voice messages, extract mental state metrics, and map them to historical geospatial data. This project uses advanced AI models (Whisper V3, SpeechBrain, GPT-4) to process raw audio and semantics.
 
