@@ -1,70 +1,35 @@
-# Telegram Voice Message Emotion Analyzer
+# AI-Powered Geospatial Audio Journal (formerly emotions-map)
 
-Analyze emotions in Telegram voice messages using advanced AI models. This application downloads voice messages from Telegram and provides detailed emotion analysis using two different AI models.
+Analyze emotions in Telegram voice messages, extract mental state metrics, and map them to historical geospatial data. This project uses advanced AI models (Whisper V3, SpeechBrain, GPT-4) to process raw audio and semantics.
 
-## Quick Start
+## Architecture & Structure
 
-1. Clone and install dependencies:
+The repository has been restructured into discrete services for better AI-assisted development and isolation of concerns:
+
+- `services/telegram-bot/`: Node.js MTProto client that downloads messages.
+- `services/emotion-engine/`: Python FastAPI service running local ML models.
+- `services/core-api/`: Orchestration and data integration logic (Notion sync, state of mind evaluation).
+- `data-scripts/`: Utilities for batch ingestion (e.g., Polarsteps location parsing, historical audio imports).
+- `docs/decisions/`: Architecture Decision Records (ADRs) logging key technical choices.
+
+## Quick Start (Development)
+
+The services run independently. See their respective directories for detailed setups.
+
+1. **Python Emotion Engine**:
 ```bash
-git clone <repository-url>
-cd telegram-emotion-app
-npm install
-```
-
-2. Set up Python environment:
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-cd emotion-analysis-service
+cd services/emotion-engine
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
-```
-
-3. Create `.env` file with your Telegram credentials:
-```env
-API_ID=your_api_id
-API_HASH=your_api_hash
-PHONE_NUMBER=your_phone_number
-TARGET_CHAT_ID=target_chat_id
-```
-
-4. Start the services:
-```bash
-# Terminal 1 - Start Python service
-cd emotion-analysis-service
 uvicorn main:app --reload
+```
 
-# Terminal 2 - Start Node.js app
+2. **Node.js Telegram Bot**:
+```bash
+cd services/telegram-bot
+npm install
 npm run dev
 ```
 
-## Features
-
-- 🎙️ Voice message analysis from Telegram
-- 🤖 Dual AI model analysis (Whisper V3 & SpeechBrain)
-- 📊 Detailed audio analysis and visualization
-- 🔄 Real-time processing
-- 📱 Easy-to-use interface
-
-## Requirements
-
-- Node.js 16+
-- Python 3.9+
-- FFmpeg
-- Telegram API credentials
-
-## Documentation
-
-For detailed technical documentation, see the [docs](./docs) folder.
-
-## License
-
-[Add your license here]
-
-
-
-### Workflow
-
-- Audio Emotion Analysis
-- Speech to Text Transcription
-- Text Correction
-- Text Emotion Analysis
+For AI development, please refer to the `.cursorrules` file at the root of the repository.

@@ -1,0 +1,21 @@
+# AI-Powered Geospatial Audio Journal - Context Rules
+
+This repository implements an AI-Powered Geospatial Audio Journal. The central idea is to analyze Telegram text and voice messages, extract emotional context, and correlate it with physical locations and mental states.
+
+## Architecture Guidelines
+- **Microservices Approach**: 
+  - `services/telegram-bot/`: Node.js/TypeScript based service handling Telegram interactions.
+  - `services/emotion-engine/`: Python/FastAPI service invoking Whisper (transcription) and SpeechBrain (acoustic emotion analysis).
+  - `services/core-api/`: Backend managing business logic, mental state modeling, and 3rd party integrations.
+- **Data Ingestion**: Specific scripts reside in `data-scripts/` for tasks like parsing Polarsteps location data and importing archive voice messages.
+- **Documentation**: All architecture decisions MUST be logged in `docs/decisions/` as ADRs (Architecture Decision Records).
+
+## Core Technologies
+- TypeScript / Node.js
+- Python / FastAPI
+- Whisper V3 & SpeechBrain (Local ML models / HuggingFace)
+- GPT-4 (Semantic text evaluation)
+
+## Rules
+- When generating code, follow existing file patterns. Avoid large monorepo abstractions unless explicitly directed.
+- Always read `docs/decisions/` when uncertain about foundational choices.
