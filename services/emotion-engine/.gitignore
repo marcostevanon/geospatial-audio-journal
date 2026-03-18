@@ -1,6 +1,5 @@
 # emotion-engine specific
 /venv/
 /.cache/
-/samples/
 /__pycache__/
 *.pyc

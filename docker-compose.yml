@@ -22,15 +22,18 @@ services:
       - ml_cache:/app/.cache
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')" ]
-      interval: 30s
+      test: [ "CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")' || exit 1" ]
+      interval: 20s
       timeout: 10s
-      retries: 5
-      start_period: 120s
+      retries: 30
+      start_period: 20s
     deploy:
       resources:
         limits:
           memory: 6G
+    environment:
+      - HF_HOME=/app/.cache
+      - SPEECHBRAIN_CACHE=/app/.cache
     networks:
       - app-network
 
