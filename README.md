@@ -14,22 +14,48 @@ The repository has been restructured into discrete services for better AI-assist
 
 ## Quick Start (Development)
 
-The services run independently. See their respective directories for detailed setups.
+The project consists of multiple independent services. To run the full audio recording and analysis pipeline, follow these steps in separate terminal windows:
 
-1. **Python Emotion Engine**:
+### 1. Start Redis (Message Queue)
+We use Redis and BullMQ to handle background audio processing. Ensure Docker is running.
+```bash
+docker compose up -d
+```
+
+### 2. Python Emotion Engine (AI Backend)
+This FastAPI service runs the ML models (Whisper/SpeechBrain) for emotion analysis.
 ```bash
 cd services/emotion-engine
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload
+uvicorn main:app --reload --port 8000
 ```
 
-2. **Node.js Telegram Bot**:
+### 3. Node.js Worker (Job Consumer)
+This worker listens to Redis, downloads the audio from Firebase, and sends it to the Emotion Engine. 
+*(Requires Firebase credentials in `services/worker/.env` or `.env.local`)*
+```bash
+cd services/worker
+npm install
+npm run dev
+```
+
+### 4. Next.js Web UI (Frontend)
+The web interface for recording and uploading audio.
+*(Requires Firebase public config in `services/web/.env.local`)*
+```bash
+cd services/web
+npm install
+npm run dev
+```
+
+*(Optional)* **Node.js Telegram Bot**:
+If you also want to ingest Telegram audio messages:
 ```bash
 cd services/telegram-bot
 npm install
 npm run dev
 ```
 
-For AI development, please refer to the `.cursorrules` file at the root of the repository.
+For AI development guidelines, please refer to the `.cursorrules` file at the root of the repository.
