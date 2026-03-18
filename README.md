@@ -6,7 +6,7 @@ Analyze emotions in Telegram voice messages, extract mental state metrics, and m
 
 The repository has been restructured into discrete services for better AI-assisted development and isolation of concerns:
 
-- `services/telegram-bot/`: Node.js MTProto client that downloads messages.
+- `services/telegram/`: Node.js MTProto client that downloads messages.
 - `services/emotion-engine/`: Python FastAPI service running local ML models.
 - `services/core-api/`: Orchestration and data integration logic (Notion sync, state of mind evaluation).
 - `data-scripts/`: Utilities for batch ingestion (e.g., Polarsteps location parsing, historical audio imports).
@@ -38,8 +38,8 @@ To enable audio uploads from `localhost:3000`:
 ### Prerequisites
 - [Docker](https://www.docker.com/) installed and running.
 - Firebase project configured:
-  - `services/web/.env.local` — Firebase public config (`NEXT_PUBLIC_FIREBASE_*` keys).
-  - `services/worker/.env.local` — Firebase service account path (`FIREBASE_SERVICE_ACCOUNT_PATH`) and storage bucket (`FIREBASE_STORAGE_BUCKET`).
+  - `secrets/web.env` — Firebase public config (`NEXT_PUBLIC_FIREBASE_*` keys).
+  - `secrets/worker.env` — Firebase service account path (`FIREBASE_SERVICE_ACCOUNT_PATH`) and storage bucket (`FIREBASE_STORAGE_BUCKET`).
 
 ### One Command Start
 The entire stack (Redis, Emotion Engine, Worker, Web UI) is orchestrated with Docker Compose:
@@ -95,6 +95,6 @@ npm install && npm run dev
 
 </details>
 
-*(Optional)* **Telegram Bot**: See `services/telegram-bot/` for setup instructions.
+*(Optional)* **Telegram Bot**: See `services/telegram/` for setup instructions.
 
 For AI development guidelines, refer to `.cursorrules` at the project root.

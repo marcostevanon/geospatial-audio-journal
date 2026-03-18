@@ -8,7 +8,7 @@ The application relies heavily on two different ecosystems: Node.js (for Telegra
 
 ## Decision
 We will separate the project into independent services under the `services/` directory:
--   `services/telegram-bot`: Manages the MTProto connection.
+-   `services/telegram`: Manages the MTProto connection.
 -   `services/emotion-engine`: An isolated Python API serving ML predictions.
 -   `services/core-api`: The central orchestration API handling business logic (e.g. state of mind, Notion sync).
 
