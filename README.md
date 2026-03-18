@@ -10,52 +10,91 @@ The repository has been restructured into discrete services for better AI-assist
 - `services/emotion-engine/`: Python FastAPI service running local ML models.
 - `services/core-api/`: Orchestration and data integration logic (Notion sync, state of mind evaluation).
 - `data-scripts/`: Utilities for batch ingestion (e.g., Polarsteps location parsing, historical audio imports).
+- `secrets/`: Centralized storage for environment files and sensitive keys (ignored by git).
 - `docs/decisions/`: Architecture Decision Records (ADRs) logging key technical choices.
+
+## Setup & Secrets
+
+This project uses a centralized `secrets/` folder at the root level to manage sensitive configurations. **This folder is ignored by Git.**
+
+### 1. Initialize Secrets
+Copy the example files and fill in your actual credentials:
+```bash
+cp secrets/web.env.example secrets/web.env
+cp secrets/worker.env.example secrets/worker.env
+cp secrets/root.env.example secrets/root.env
+```
+
+### 2. Firebase Configuration
+- **Web UI & Worker**: Create a Firebase project, enable **Storage**, and create a bucket.
+- **Worker Authentication**: Generate a **Service Account JSON** from Firebase Project Settings > Service Accounts and save it as `secrets/service-account.json`.
+
+### 3. Firebase CORS & Rules
+To enable audio uploads from `localhost:3000`:
+- **Rules**: In Firebase Console > Storage > Rules, allow writes to the `audio_uploads/` path. (development only)
 
 ## Quick Start (Development)
 
-The project consists of multiple independent services. To run the full audio recording and analysis pipeline, follow these steps in separate terminal windows:
+### Prerequisites
+- [Docker](https://www.docker.com/) installed and running.
+- Firebase project configured:
+  - `services/web/.env.local` — Firebase public config (`NEXT_PUBLIC_FIREBASE_*` keys).
+  - `services/worker/.env.local` — Firebase service account path (`FIREBASE_SERVICE_ACCOUNT_PATH`) and storage bucket (`FIREBASE_STORAGE_BUCKET`).
 
-### 1. Start Redis (Message Queue)
-We use Redis and BullMQ to handle background audio processing. Ensure Docker is running.
+### One Command Start
+The entire stack (Redis, Emotion Engine, Worker, Web UI) is orchestrated with Docker Compose:
+
 ```bash
-docker compose up -d
+docker compose up --build
 ```
 
-### 2. Python Emotion Engine (AI Backend)
-This FastAPI service runs the ML models (Whisper/SpeechBrain) for emotion analysis.
+This will start:
+| Service | Port | Description |
+|---|---|---|
+| **Web UI** | `localhost:3000` | Next.js audio recording interface |
+| **Emotion Engine** | `localhost:8000` | Python FastAPI ML backend |
+| **Worker** | — | BullMQ job consumer (no exposed port) |
+| **Redis** | `localhost:6379` | Message queue |
+
+All services support **hot reloading** — code changes are reflected immediately without restarting containers.
+
+To stop:
+```bash
+docker compose down
+```
+
+<details>
+<summary><strong>Manual Start (without Docker)</strong></summary>
+
+If you prefer running services natively, start each in a separate terminal:
+
+**1. Redis**
+```bash
+docker compose up redis -d
+```
+
+**2. Emotion Engine**
 ```bash
 cd services/emotion-engine
-python -m venv venv
-source venv/bin/activate
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-### 3. Node.js Worker (Job Consumer)
-This worker listens to Redis, downloads the audio from Firebase, and sends it to the Emotion Engine. 
-*(Requires Firebase credentials in `services/worker/.env` or `.env.local`)*
+**3. Worker**
 ```bash
 cd services/worker
-npm install
-npm run dev
+npm install && npm run dev
 ```
 
-### 4. Next.js Web UI (Frontend)
-The web interface for recording and uploading audio.
-*(Requires Firebase public config in `services/web/.env.local`)*
+**4. Web UI**
 ```bash
 cd services/web
-npm install
-npm run dev
+npm install && npm run dev
 ```
 
-*(Optional)* **Node.js Telegram Bot**:
-If you also want to ingest Telegram audio messages:
-```bash
-cd services/telegram-bot
-npm install
-npm run dev
-```
+</details>
 
-For AI development guidelines, please refer to the `.cursorrules` file at the root of the repository.
+*(Optional)* **Telegram Bot**: See `services/telegram-bot/` for setup instructions.
+
+For AI development guidelines, refer to `.cursorrules` at the project root.

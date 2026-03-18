@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   redis:
     image: redis:7-alpine
@@ -9,6 +7,82 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    networks:
+      - app-network
+
+  emotion-engine:
+    build:
+      context: ./services/emotion-engine
+      dockerfile: Dockerfile.dev
+    container_name: geospatial-emotion-engine
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./services/emotion-engine:/app
+      - ml_cache:/app/.cache
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+    networks:
+      - app-network
+
+  worker:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile.dev
+    container_name: geospatial-worker
+    volumes:
+      - ./services/worker:/app
+      - ./secrets:/app/secrets
+    env_file:
+      - ./secrets/worker.env
+    environment:
+      - FIREBASE_SERVICE_ACCOUNT_PATH=/app/secrets/service-account.json
+      - REDIS_URL=redis://redis:6379
+      - EMOTION_ENGINE_URL=http://emotion-engine:8000/api/audio/emotion
+      - CHOKIDAR_USEPOLLING=true
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_started
+      emotion-engine:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  web:
+    build:
+      context: ./services/web
+      dockerfile: Dockerfile.dev
+    container_name: geospatial-web
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./services/web:/app
+    env_file:
+      - ./secrets/web.env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - CHOKIDAR_USEPOLLING=true
+    restart: unless-stopped
+    depends_on:
+      - worker
+    networks:
+      - app-network
 
 volumes:
   redis_data:
+  ml_cache:
+
+
+networks:
+  app-network:
+    driver: bridge
