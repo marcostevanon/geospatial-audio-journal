@@ -10,21 +10,42 @@
 
 
 import numpy as np
-import torch
-from speechbrain.inference.classifiers import EncoderClassifier
+from collections import defaultdict
+import logging
 from collections import defaultdict
 import logging
 
 logger = logging.getLogger(__name__)
 
-SPEECHBRAIN_MODEL_ID = "speechbrain/emotion-recognition-wav2vec2-IEMOCAP"  # should be HuggingFace model name, not a local path
+SPEECHBRAIN_MODEL_ID = "speechbrain/emotion-recognition-wav2vec2-IEMOCAP"
 SPEECHBRAIN_MODEL_DIR = ".cache/emotion-recognition-wav2vec2-IEMOCAP"
 
-speechbrain_model = EncoderClassifier.from_hparams(
-    source=SPEECHBRAIN_MODEL_ID,
-    savedir=SPEECHBRAIN_MODEL_DIR,
-    run_opts={"device": "cpu"},
-)
+_speechbrain_model = None
+
+
+def get_speechbrain_model():
+    """Lazy load the SpeechBrain model."""
+    global _speechbrain_model
+    if _speechbrain_model is None:
+        import torch
+        from speechbrain.inference.classifiers import EncoderClassifier
+        
+        device = "cpu"
+        if torch.backends.mps.is_available():
+            device = "mps"
+        elif torch.cuda.is_available():
+            device = "cuda"
+
+        logger.info(
+            f"Loading SpeechBrain model '{SPEECHBRAIN_MODEL_ID}' on {device}..."
+        )
+        _speechbrain_model = EncoderClassifier.from_hparams(
+            source=SPEECHBRAIN_MODEL_ID,
+            savedir=SPEECHBRAIN_MODEL_DIR,
+            run_opts={"device": device},
+        )
+        logger.info("SpeechBrain model loaded successfully.")
+    return _speechbrain_model
 
 
 def get_emotions_from_audio(
@@ -55,6 +76,7 @@ def get_emotions_from_audio(
         )
         audio_array = audio_array[:target_length]
     # Preprocess for SpeechBrain
+    import torch
     waveform = torch.FloatTensor(audio_array)
     if waveform.abs().max() > 0:
         waveform = waveform / waveform.abs().max()
@@ -62,9 +84,12 @@ def get_emotions_from_audio(
         waveform = waveform.mean(dim=1)
     waveform = waveform.unsqueeze(0)
     # Model inference
-    wav_lens = torch.tensor([1.0])
-    feats = speechbrain_model.mods.wav2vec2(waveform, wav_lens)
-    outputs = speechbrain_model.mods.output_mlp(feats)
+    import torch
+    model = get_speechbrain_model()
+    waveform = waveform.to(next(model.mods.wav2vec2.parameters()).device)
+    wav_lens = torch.tensor([1.0]).to(waveform.device)
+    feats = model.mods.wav2vec2(waveform, wav_lens)
+    outputs = model.mods.output_mlp(feats)
     probs = torch.nn.functional.softmax(outputs, dim=-1)
     probs = probs.mean(dim=1).squeeze().tolist()
     # Top emotions
@@ -73,11 +98,11 @@ def get_emotions_from_audio(
     valid_indices = [
         idx
         for idx in top_k_idx
-        if idx in speechbrain_model.hparams.label_encoder.ind2lab
+        if idx in model.hparams.label_encoder.ind2lab
     ]
     return [
         {
-            "emotion": speechbrain_model.hparams.label_encoder.ind2lab[idx],
+            "emotion": model.hparams.label_encoder.ind2lab[idx],
             "confidence": float(probs[idx]) * 100,
         }
         for idx in valid_indices
@@ -114,8 +139,9 @@ def analyze_and_aggregate_emotions(audio_array: np.ndarray, sample_rate: int = 1
     chunks = split_audio_into_chunks(audio_array, 30.0, sample_rate)
     emotion_scores = defaultdict(list)
     per_chunk = []
+    model = get_speechbrain_model()
     emotion_labels = list(
-        getattr(speechbrain_model.hparams.label_encoder, "ind2lab", {}).values()
+        getattr(model.hparams.label_encoder, "ind2lab", {}).values()
     )
     if not emotion_labels:
         emotion_labels = ["sad", "fearful", "happy", "neutral", "disgust"]

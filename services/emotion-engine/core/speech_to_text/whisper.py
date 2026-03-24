@@ -1,4 +1,3 @@
-import whisper
 import numpy as np
 import tempfile
 import soundfile as sf
@@ -15,8 +14,29 @@ logger = logging.getLogger(__name__)
 # "large-v2" - 1.5B parameters (improved version)
 # "large-v3" - 1.5B parameters (latest version)
 
+# WHISPER_MODEL_SIZE = "medium"
 WHISPER_MODEL_SIZE = "large-v3"
-whisper_model = whisper.load_model(WHISPER_MODEL_SIZE)
+_whisper_model = None
+
+
+def get_whisper_model():
+    """Lazy load the Whisper model."""
+    global _whisper_model
+    if _whisper_model is None:
+        import whisper
+        import torch
+
+        # Force CPU for Whisper because MPS often lacks sparse tensor support for this model
+        device = "cpu"
+        # if torch.backends.mps.is_available():
+        #     device = "mps"
+        # elif torch.cuda.is_available():
+        #     device = "cuda"
+
+        logger.info(f"Loading Whisper model '{WHISPER_MODEL_SIZE}' on {device}...")
+        _whisper_model = whisper.load_model(WHISPER_MODEL_SIZE, device=device)
+        logger.info("Whisper model loaded successfully.")
+    return _whisper_model
 
 
 def transcribe_audio(audio_array: np.ndarray, sample_rate: int = 16000) -> dict:
@@ -30,7 +50,7 @@ def transcribe_audio(audio_array: np.ndarray, sample_rate: int = 16000) -> dict:
         temp_wav.flush()
         temp_path = temp_wav.name
     try:
-        result = whisper_model.transcribe(
+        result = get_whisper_model().transcribe(
             temp_path,
             language=None,  # Auto-detect language
             task="transcribe",

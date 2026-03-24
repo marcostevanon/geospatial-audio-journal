@@ -1,16 +1,49 @@
 import numpy as np
-import torch
-from transformers import AutoModelForAudioClassification, AutoFeatureExtractor
+import logging
 from collections import defaultdict
 import logging
 
 logger = logging.getLogger(__name__)
 
 WHISPER_MODEL_ID = "firdhokk/speech-emotion-recognition-with-openai-whisper-large-v3"
-whisper_model = AutoModelForAudioClassification.from_pretrained(
-    WHISPER_MODEL_ID, force_download=False, cache_dir=".cache"
-)
-whisper_feature_extractor = AutoFeatureExtractor.from_pretrained(WHISPER_MODEL_ID)
+
+_whisper_model = None
+_whisper_feature_extractor = None
+
+
+def get_whisper_emotion_model():
+    """Lazy load the Whisper emotion model."""
+    global _whisper_model
+    if _whisper_model is None:
+        import torch
+        from transformers import AutoModelForAudioClassification
+        
+        # Force CPU for stability during demo
+        device = "cpu"
+        # if torch.backends.mps.is_available():
+        #     device = "mps"
+        # elif torch.cuda.is_available():
+        #     device = "cuda"
+
+        logger.info(
+            f"Loading Whisper emotion model '{WHISPER_MODEL_ID}' on {device}..."
+        )
+        _whisper_model = AutoModelForAudioClassification.from_pretrained(
+            WHISPER_MODEL_ID, force_download=False, cache_dir=".cache"
+        ).to(device)
+        logger.info("Whisper emotion model loaded successfully.")
+    return _whisper_model
+
+
+def get_whisper_feature_extractor():
+    """Lazy load the Whisper feature extractor."""
+    global _whisper_feature_extractor
+    if _whisper_feature_extractor is None:
+        from transformers import AutoFeatureExtractor
+        _whisper_feature_extractor = AutoFeatureExtractor.from_pretrained(
+            WHISPER_MODEL_ID
+        )
+    return _whisper_feature_extractor
 
 EMOTION_LABEL_MAP = {
     "happy": "hap",
@@ -35,7 +68,8 @@ def get_emotions_from_audio(
     if len(audio_array.shape) > 1:
         audio_array = np.mean(audio_array, axis=0)
     # Pad or truncate to 30 seconds (480,000 samples at 16kHz)
-    target_length = int(whisper_feature_extractor.sampling_rate * max_duration)
+    fe = get_whisper_feature_extractor()
+    target_length = int(fe.sampling_rate * max_duration)
     if len(audio_array) == target_length:
         audio_array = audio_array
     elif len(audio_array) < target_length:
@@ -49,24 +83,32 @@ def get_emotions_from_audio(
         )
         audio_array = audio_array[:target_length]
     # Feature extraction
-    inputs = whisper_feature_extractor(
+    fe = get_whisper_feature_extractor()
+    inputs = fe(
         audio_array,
-        sampling_rate=whisper_feature_extractor.sampling_rate,
+        sampling_rate=fe.sampling_rate,
         return_tensors="pt",
     )
     # Model inference
+    import torch
+    model = get_whisper_emotion_model()
+    inputs = {k: v.to(model.device) for k, v in inputs.items()}
     with torch.no_grad():
-        outputs = whisper_model(**inputs)
+        outputs = model(**inputs)
     probs = torch.nn.functional.softmax(outputs.logits, dim=-1).squeeze().tolist()
     # Top emotions
+    import torch
+    model = get_whisper_emotion_model()
     top_k = min(5, len(probs))
     top_k_idx = torch.topk(torch.tensor(probs), top_k).indices.tolist()
     # logger.info(
-    #     f"Top emotions: {[whisper_model.config.id2label[idx] for idx in top_k_idx]}"
+    #     f"Top emotions: {[model.config.id2label[idx] for idx in top_k_idx]}"
     # )
     return [
         {
-            "emotion": EMOTION_LABEL_MAP.get(whisper_model.config.id2label[idx], whisper_model.config.id2label[idx])[:3],
+            "emotion": EMOTION_LABEL_MAP.get(
+                model.config.id2label[idx], model.config.id2label[idx]
+            )[:3],
             "confidence": float(probs[idx]) * 100,
         }
         for idx in top_k_idx
@@ -104,7 +146,8 @@ def analyze_and_aggregate_emotions(audio_array: np.ndarray, sample_rate: int = 1
     emotion_scores = defaultdict(list)
     per_chunk = []
     # Use model's id2label for emotion keys, fallback to default
-    emotion_labels = list(getattr(whisper_model.config, "id2label", {}).values())
+    model = get_whisper_emotion_model()
+    emotion_labels = list(getattr(model.config, "id2label", {}).values())
     if not emotion_labels:
         emotion_labels = ["sad", "fearful", "happy", "neutral", "disgust"]
     # Map emotion_labels to 3-char codes
