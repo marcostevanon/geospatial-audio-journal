@@ -4,7 +4,7 @@ import { audioQueue } from '../../../lib/redis';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { fileName, fileUrl } = body;
+    const { fileName, fileUrl, docId, duration } = body;
 
     if (!fileName || !fileUrl) {
       return NextResponse.json(
@@ -17,7 +17,9 @@ export async function POST(req: Request) {
     const job = await audioQueue.add('analyze-audio', {
       fileName,
       fileUrl,
-      userId: 'anonymous', // we can add actual auth later
+      docId,
+      duration,
+      userId: 'anonymous',
     });
 
     return NextResponse.json({

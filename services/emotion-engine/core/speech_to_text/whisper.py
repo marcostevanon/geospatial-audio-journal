@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 # "large-v2" - 1.5B parameters (improved version)
 # "large-v3" - 1.5B parameters (latest version)
 
-# WHISPER_MODEL_SIZE = "medium"
-WHISPER_MODEL_SIZE = "large-v3"
+WHISPER_MODEL_SIZE = "medium"
+# WHISPER_MODEL_SIZE = "large-v3"
 _whisper_model = None
 
 

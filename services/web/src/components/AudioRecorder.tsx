@@ -1,17 +1,17 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Mic, Square, UploadCloud, Loader2 } from 'lucide-react';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from '../lib/firebase';
+import { addDoc, collection as fsCollection, serverTimestamp } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Loader2, Mic, Square } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { db, storage } from '../lib/firebase';
 
 export default function AudioRecorder() {
   const [isRecording, setIsRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [recordStart, setRecordStart] = useState<number | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -30,6 +30,7 @@ export default function AudioRecorder() {
       };
 
       mediaRecorder.start();
+      setRecordStart(Date.now());
       setIsRecording(true);
     } catch (err) {
       console.error('Error accessing microphone:', err);
@@ -40,26 +41,25 @@ export default function AudioRecorder() {
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.onstop = async () => {
+        const durationMs = recordStart ? Date.now() - recordStart : 0;
+        const durationSec = Math.round(durationMs / 1000);
+
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const url = URL.createObjectURL(audioBlob);
-        setAudioUrl(url);
         setIsRecording(false);
-        // Automatically start upload
-        await handleUpload(audioBlob);
+        setRecordStart(null);
+        await handleUpload(audioBlob, durationSec);
       };
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
     }
   };
 
-  const handleUpload = async (audioBlob: Blob) => {
+  const handleUpload = async (audioBlob: Blob, duration: number) => {
     setIsUploading(true);
     setProgress(0);
-    setAnalysisResult(null);
 
     const fileName = `recording-${Date.now()}.webm`;
     const storageRef = ref(storage, `audio_uploads/${fileName}`);
-
     const uploadTask = uploadBytesResumable(storageRef, audioBlob);
 
     uploadTask.on(
@@ -75,28 +75,41 @@ export default function AudioRecorder() {
       },
       async () => {
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        setIsUploading(false);
 
-        // Notify API backend to enqueue the job
-        await enqueueJob(fileName, downloadURL);
+        // Save placeholder in Firestore so it appears immediately
+        try {
+          const docRef = await addDoc(fsCollection(db, 'voice_notes'), {
+            fileName,
+            fileUrl: downloadURL,
+            userId: 'anonymous',
+            createdAt: serverTimestamp(),
+            duration: duration,
+            emotions: {},
+            transcript: '',
+            status: 'processing'
+          });
+
+          console.log('docRef', docRef)
+
+          await enqueueJob(fileName, downloadURL, docRef.id, duration);
+        } catch (e) {
+          console.error("Error creating Firestore doc:", e);
+        }
+
+        setIsUploading(false);
       }
     );
   };
 
-  const enqueueJob = async (fileName: string, fileUrl: string) => {
+  const enqueueJob = async (fileName: string, fileUrl: string, docId: string, duration: number) => {
     try {
       const response = await fetch('/api/audio', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ fileName, fileUrl }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName, fileUrl, docId, duration }),
       });
-
       const data = await response.json();
-      if (data.success) {
-        setAnalysisResult({ status: 'Processing...', jobId: data.jobId });
-      } else {
+      if (!data.success) {
         alert('Failed to queue analysis.');
       }
     } catch (err) {
@@ -105,71 +118,66 @@ export default function AudioRecorder() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl w-full max-w-md mx-auto">
-      <div className="mb-8 text-center">
-        <h2 className="text-2xl font-semibold text-white mb-2">Voice Emotion Analysis</h2>
-        <p className="text-white/60 text-sm">Record your thoughts and analyze the emotional tone.</p>
-      </div>
-
-      <div className="relative flex justify-center items-center w-full mb-8">
-        {isRecording && (
-          <motion.div
-            initial={{ scale: 1, opacity: 0.5 }}
-            animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="absolute w-32 h-32 bg-red-500/30 rounded-full z-0"
-          />
-        )}
-        <button
-          onClick={isRecording ? stopRecording : startRecording}
-          disabled={isUploading}
-          className={`relative z-10 flex items-center justify-center w-24 h-24 rounded-full shadow-lg transition-all duration-300 ${isRecording
-            ? 'bg-red-500 hover:bg-red-600 shadow-red-500/50'
-            : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/50'
-            } ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          {isRecording ? (
-            <Square fill="white" className="w-8 h-8 text-white" />
-          ) : (
-            <Mic className="w-10 h-10 text-white" />
-          )}
-        </button>
-      </div>
-
-      <div className="w-full text-center min-h-[60px]">
-        {isUploading && (
-          <div className="w-full">
-            <div className="flex items-center justify-center text-indigo-400 text-sm mb-2 font-medium">
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Uploading to Cloud... {Math.round(progress)}%
-            </div>
-            <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+    <div className="flex flex-col items-start transition-all">
+      <div className="flex items-center flex-col w-full">
+        <div className="relative">
+          <AnimatePresence>
+            {isRecording && (
               <motion.div
-                className="bg-indigo-500 h-1.5 rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0, 0.3] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className="absolute inset-0 bg-red-400 rounded-full z-0 pointer-events-none"
               />
-            </div>
-          </div>
-        )}
-
-        {analysisResult && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 p-4 bg-white/5 border border-white/10 rounded-xl"
+            )}
+          </AnimatePresence>
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={isUploading}
+            className={`relative z-10 cursor-pointer flex items-center justify-center w-14 h-14 rounded-full shadow-sm transition-all duration-300 transform hover:scale-105 active:scale-95 ${isRecording
+              ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-200'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'
+              } ${isUploading ? 'opacity-50 cursor-not-allowed scale-100 hover:scale-100' : ''}`}
           >
-            <p className="text-white text-sm font-medium">Analysis Job Queued</p>
-            <p className="text-white/50 text-xs mt-1 font-mono">ID: {analysisResult.jobId}</p>
-          </motion.div>
-        )}
-      </div>
-
-      {audioUrl && !isRecording && (
-        <div className="mt-6 w-full">
-          <audio controls src={audioUrl} className="w-full h-10 rounded-full" />
+            {isRecording ? (
+              <Square fill="currentColor" className="w-5 h-5" />
+            ) : (
+              <Mic className="w-6 h-6" />
+            )}
+          </button>
         </div>
-      )}
+
+        <div className="flex-1 flex flex-col justify-center min-h-[56px]">
+          {!isRecording && !isUploading && (
+            <span className="text-sm font-medium text-slate-600">Tap to record</span>
+          )}
+          {isRecording && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center gap-2"
+            >
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+              <span className="text-sm font-bold text-red-500">Recording...</span>
+            </motion.div>
+          )}
+          {isUploading && (
+            <div className="w-full">
+              <div className="flex items-center text-indigo-600 text-xs font-bold mb-1.5">
+                <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                Uploading {Math.round(progress)}%
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                <motion.div
+                  className="bg-indigo-500 h-1.5 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

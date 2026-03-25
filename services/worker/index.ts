@@ -2,6 +2,7 @@ import { Worker, Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import admin from 'firebase-admin';
 import { getStorage } from 'firebase-admin/storage';
+import { getFirestore } from 'firebase-admin/firestore';
 import axios from 'axios';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
@@ -29,12 +30,12 @@ if (serviceAccountKey || serviceAccountPath) {
     if (serviceAccountKey) {
       serviceAccount = JSON.parse(serviceAccountKey);
     } else if (serviceAccountPath) {
-      const absolutePath = path.isAbsolute(serviceAccountPath) 
-        ? serviceAccountPath 
+      const absolutePath = path.isAbsolute(serviceAccountPath)
+        ? serviceAccountPath
         : path.join(process.cwd(), serviceAccountPath);
       serviceAccount = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
     }
-    
+
     app = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       storageBucket: process.env.FIREBASE_STORAGE_BUCKET || '',
@@ -55,6 +56,8 @@ interface AudioAnalysisJob {
   fileUrl: string;
   fileName: string;
   userId?: string;
+  docId: string;
+  duration?: number;
 }
 
 const worker = new Worker('audio-analysis', async (job: Job<AudioAnalysisJob>) => {
@@ -76,11 +79,11 @@ const worker = new Worker('audio-analysis', async (job: Job<AudioAnalysisJob>) =
 
     console.log(`File downloaded to ${tempFilePath}. Sending to emotion-engine...`);
 
-    // 2. Send to FastAPI emotion-engine
+    // 2. Send to emotion-engine
     const form = new FormData();
     form.append('file', fs.createReadStream(tempFilePath));
 
-    const engineUrl = process.env.EMOTION_ENGINE_URL || 'http://localhost:8000/api/audio/emotion';
+    const engineUrl = process.env.EMOTION_ENGINE_URL || 'http://localhost:8000/api/audio/analyze';
 
     const response = await axios.post(engineUrl, form, {
       headers: { ...(form as any).getHeaders() }
@@ -91,9 +94,35 @@ const worker = new Worker('audio-analysis', async (job: Job<AudioAnalysisJob>) =
     // 3. Cleanup temp file
     fs.unlinkSync(tempFilePath);
 
-    // 4. Save results
-    return response.data;
+    console.log(response.data)
 
+    // 4. Update results in Firestore
+    const db = getFirestore();
+    const updateData = {
+      duration: response.data.duration || job.data.duration || 0, // Fallback to provided duration if backend doesn't return
+      emotions: response.data.emotions || {},
+      transcript: response.data.transcription || '',
+      language: response.data.language || '',
+      status: 'completed'
+    };
+
+    if (job.data.docId) {
+      await db.collection('voice_notes').doc(job.data.docId).update(updateData);
+      console.log(`Updated Firestore doc: ${job.data.docId}`);
+      return { ...response.data, firestoreId: job.data.docId };
+    } else {
+      // Fallback for old queued jobs without docId
+      const voiceNoteData = {
+        fileName: job.data.fileName,
+        fileUrl: job.data.fileUrl,
+        userId: job.data.userId || 'anonymous',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        ...updateData
+      };
+      const docRef = await db.collection('voice_notes').add(voiceNoteData);
+      console.log(`Saved new analysis to Firestore with ID: ${docRef.id}`);
+      return { ...response.data, firestoreId: docRef.id };
+    }
   } catch (error) {
     console.error(`Failed to process job ${job.id}:`, error);
     throw error;

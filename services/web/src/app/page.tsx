@@ -1,16 +1,18 @@
 import AudioRecorder from '../components/AudioRecorder';
+import VoiceNotesList from '../components/VoiceNotesList';
 
 export default function Home() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-gray-900 via-black to-gray-900">
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-transparent to-transparent pointer-events-none" />
-
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm">
-        <h1 className="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 text-center mb-12 tracking-tight">
-          Audio Journal Demo
-        </h1>
-
-        <AudioRecorder />
+    <main className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+      <div className="max-w-5xl mx-auto p-6 md:p-12">
+        <div className="flex flex-col items-start gap-12 w-full">
+          <section className="w-full mx-auto max-w-sm">
+            <AudioRecorder />
+          </section>
+          <section className="w-full">
+            <VoiceNotesList />
+          </section>
+        </div>
       </div>
     </main>
   );
