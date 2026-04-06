@@ -10,8 +10,7 @@
 
 
 import numpy as np
-from collections import defaultdict
-import logging
+import torch
 from collections import defaultdict
 import logging
 
@@ -27,9 +26,8 @@ def get_speechbrain_model():
     """Lazy load the SpeechBrain model."""
     global _speechbrain_model
     if _speechbrain_model is None:
-        import torch
         from speechbrain.inference.classifiers import EncoderClassifier
-        
+
         device = "cpu"
         if torch.backends.mps.is_available():
             device = "mps"
@@ -76,7 +74,6 @@ def get_emotions_from_audio(
         )
         audio_array = audio_array[:target_length]
     # Preprocess for SpeechBrain
-    import torch
     waveform = torch.FloatTensor(audio_array)
     if waveform.abs().max() > 0:
         waveform = waveform / waveform.abs().max()
@@ -84,7 +81,6 @@ def get_emotions_from_audio(
         waveform = waveform.mean(dim=1)
     waveform = waveform.unsqueeze(0)
     # Model inference
-    import torch
     model = get_speechbrain_model()
     waveform = waveform.to(next(model.mods.wav2vec2.parameters()).device)
     wav_lens = torch.tensor([1.0]).to(waveform.device)
@@ -96,9 +92,7 @@ def get_emotions_from_audio(
     top_k = min(5, len(probs))
     top_k_idx = torch.topk(torch.tensor(probs), top_k).indices.tolist()
     valid_indices = [
-        idx
-        for idx in top_k_idx
-        if idx in model.hparams.label_encoder.ind2lab
+        idx for idx in top_k_idx if idx in model.hparams.label_encoder.ind2lab
     ]
     return [
         {
@@ -140,13 +134,11 @@ def analyze_and_aggregate_emotions(audio_array: np.ndarray, sample_rate: int = 1
     emotion_scores = defaultdict(list)
     per_chunk = []
     model = get_speechbrain_model()
-    emotion_labels = list(
-        getattr(model.hparams.label_encoder, "ind2lab", {}).values()
-    )
+    emotion_labels = list(getattr(model.hparams.label_encoder, "ind2lab", {}).values())
     if not emotion_labels:
         emotion_labels = ["sad", "fearful", "happy", "neutral", "disgust"]
     for i, chunk in enumerate(chunks):
-        logger.info(f"Analyzing chunk {i+1}/{len(chunks)}.")
+        logger.info(f"Analyzing chunk {i + 1}/{len(chunks)}.")
         emotions = get_emotions_from_audio(chunk)
         chunk_dict = {label: 0.0 for label in emotion_labels}
         for e in emotions:
@@ -163,6 +155,8 @@ def analyze_and_aggregate_emotions(audio_array: np.ndarray, sample_rate: int = 1
         )
         for label in emotion_labels
     }
-    aggregated = dict(sorted(aggregated.items(), key=lambda item: item[1], reverse=True))
+    aggregated = dict(
+        sorted(aggregated.items(), key=lambda item: item[1], reverse=True)
+    )
     logger.info(f"Aggregated emotion scores: {aggregated}")
     return {"per_chunk": per_chunk, "aggregated": aggregated}

@@ -1,9 +1,10 @@
+import os
 import requests
 import logging
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_API_URL = "http://localhost:11434/api/generate"
+OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434/api/generate")
 
 
 def correct_text_with_ollama(text: str, model: str = "llama3") -> str:

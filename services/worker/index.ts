@@ -63,16 +63,15 @@ interface AudioAnalysisJob {
 const worker = new Worker('audio-analysis', async (job: Job<AudioAnalysisJob>) => {
   console.log(`Processing job ${job.id} for file: ${job.data.fileName}`);
 
+  // Create temp directory
+  const tempDir = path.join(__dirname, 'temp');
+  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+  const tempFilePath = path.join(tempDir, job.data.fileName);
+
   try {
     // 1. Download file from Firebase Storage
     const bucket = getStorage().bucket();
     const file = bucket.file(`audio_uploads/${job.data.fileName}`);
-
-    // Create temp path
-    const tempDir = path.join(__dirname, 'temp');
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
-
-    const tempFilePath = path.join(tempDir, job.data.fileName);
 
     console.log(`Downloading ${job.data.fileName} from Firebase...`);
     await file.download({ destination: tempFilePath });
@@ -90,16 +89,12 @@ const worker = new Worker('audio-analysis', async (job: Job<AudioAnalysisJob>) =
     });
 
     console.log(`Analysis complete for job ${job.id}.`);
-
-    // 3. Cleanup temp file
-    fs.unlinkSync(tempFilePath);
-
     console.log(response.data)
 
-    // 4. Update results in Firestore
+    // 3. Update results in Firestore
     const db = getFirestore();
     const updateData = {
-      duration: response.data.duration || job.data.duration || 0, // Fallback to provided duration if backend doesn't return
+      duration: response.data.duration || job.data.duration || 0,
       emotions: response.data.emotions || {},
       transcript: response.data.transcription || '',
       language: response.data.language || '',
@@ -111,7 +106,6 @@ const worker = new Worker('audio-analysis', async (job: Job<AudioAnalysisJob>) =
       console.log(`Updated Firestore doc: ${job.data.docId}`);
       return { ...response.data, firestoreId: job.data.docId };
     } else {
-      // Fallback for old queued jobs without docId
       const voiceNoteData = {
         fileName: job.data.fileName,
         fileUrl: job.data.fileUrl,
@@ -126,6 +120,11 @@ const worker = new Worker('audio-analysis', async (job: Job<AudioAnalysisJob>) =
   } catch (error) {
     console.error(`Failed to process job ${job.id}:`, error);
     throw error;
+  } finally {
+    // Cleanup temp file
+    if (fs.existsSync(tempFilePath)) {
+      fs.unlinkSync(tempFilePath);
+    }
   }
 }, { connection });
 

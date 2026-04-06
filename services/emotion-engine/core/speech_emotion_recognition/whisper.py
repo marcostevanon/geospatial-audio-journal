@@ -1,7 +1,7 @@
 import numpy as np
+import torch
 import logging
 from collections import defaultdict
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +15,8 @@ def get_whisper_emotion_model():
     """Lazy load the Whisper emotion model."""
     global _whisper_model
     if _whisper_model is None:
-        import torch
         from transformers import AutoModelForAudioClassification
-        
+
         # Force CPU for stability during demo
         device = "cpu"
         # if torch.backends.mps.is_available():
@@ -40,10 +39,12 @@ def get_whisper_feature_extractor():
     global _whisper_feature_extractor
     if _whisper_feature_extractor is None:
         from transformers import AutoFeatureExtractor
+
         _whisper_feature_extractor = AutoFeatureExtractor.from_pretrained(
             WHISPER_MODEL_ID
         )
     return _whisper_feature_extractor
+
 
 EMOTION_LABEL_MAP = {
     "happy": "hap",
@@ -90,15 +91,12 @@ def get_emotions_from_audio(
         return_tensors="pt",
     )
     # Model inference
-    import torch
     model = get_whisper_emotion_model()
     inputs = {k: v.to(model.device) for k, v in inputs.items()}
     with torch.no_grad():
         outputs = model(**inputs)
     probs = torch.nn.functional.softmax(outputs.logits, dim=-1).squeeze().tolist()
     # Top emotions
-    import torch
-    model = get_whisper_emotion_model()
     top_k = min(5, len(probs))
     top_k_idx = torch.topk(torch.tensor(probs), top_k).indices.tolist()
     # logger.info(
@@ -151,9 +149,11 @@ def analyze_and_aggregate_emotions(audio_array: np.ndarray, sample_rate: int = 1
     if not emotion_labels:
         emotion_labels = ["sad", "fearful", "happy", "neutral", "disgust"]
     # Map emotion_labels to 3-char codes
-    emotion_labels = [EMOTION_LABEL_MAP.get(label, label)[:3] for label in emotion_labels]
+    emotion_labels = [
+        EMOTION_LABEL_MAP.get(label, label)[:3] for label in emotion_labels
+    ]
     for i, chunk in enumerate(chunks):
-        logger.info(f"Analyzing chunk {i+1}/{len(chunks)}.")
+        logger.info(f"Analyzing chunk {i + 1}/{len(chunks)}.")
         emotions = get_emotions_from_audio(chunk)
         chunk_dict = {label: 0.0 for label in emotion_labels}
         for e in emotions:
@@ -169,6 +169,8 @@ def analyze_and_aggregate_emotions(audio_array: np.ndarray, sample_rate: int = 1
         )
         for label in emotion_labels
     }
-    aggregated = dict(sorted(aggregated.items(), key=lambda item: item[1], reverse=True))
+    aggregated = dict(
+        sorted(aggregated.items(), key=lambda item: item[1], reverse=True)
+    )
     logger.info(f"Aggregated emotion scores: {aggregated}")
     return {"per_chunk": per_chunk, "aggregated": aggregated}
