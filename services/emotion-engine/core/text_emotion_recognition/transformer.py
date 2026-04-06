@@ -1,10 +1,9 @@
 import logging
-import time
 
 logger = logging.getLogger(__name__)
 
 # TEXT_EMOTION_MODEL_ID = "MilaNLProc/feel-it-italian-emotion" # 4 emotions
-# TEXT_EMOTION_MODEL_ID = "SamLowe/roberta-base-go_emotions" 
+# TEXT_EMOTION_MODEL_ID = "SamLowe/roberta-base-go_emotions"
 TEXT_EMOTION_MODEL_ID = "MilaNLProc/xlm-emo-t"
 
 _text_emotion_model = None
@@ -15,9 +14,8 @@ def get_text_emotion_model():
     """Lazy load the text emotion model."""
     global _text_emotion_model
     if _text_emotion_model is None:
-        import torch
         from transformers import AutoModelForSequenceClassification
-        
+
         # Force CPU for stability during demo
         device = "cpu"
         # if torch.backends.mps.is_available():
@@ -44,6 +42,7 @@ def get_text_emotion_tokenizer():
     if _text_emotion_tokenizer is None:
         logger.info(f"Loading tokenizer for '{TEXT_EMOTION_MODEL_ID}'...")
         from transformers import AutoTokenizer
+
         _text_emotion_tokenizer = AutoTokenizer.from_pretrained(
             TEXT_EMOTION_MODEL_ID,
             force_download=False,
@@ -51,6 +50,7 @@ def get_text_emotion_tokenizer():
             cache_dir=".cache",
         )
     return _text_emotion_tokenizer
+
 
 def get_emotions_from_text(text: str, max_length: int = 512):
     """
@@ -61,14 +61,15 @@ def get_emotions_from_text(text: str, max_length: int = 512):
     logger.info(f"Analyzing text for emotions: {text[:50]}...")
     tokenizer = get_text_emotion_tokenizer()
     model = get_text_emotion_model()
-    
+
     inputs = tokenizer(
         text, return_tensors="pt", truncation=True, max_length=max_length, padding=True
     )
     # Move inputs to same device as model
     inputs = {k: v.to(model.device) for k, v in inputs.items()}
-    
+
     import torch
+
     with torch.no_grad():
         outputs = model(**inputs)
     probs = torch.nn.functional.softmax(outputs.logits, dim=-1).squeeze().tolist()

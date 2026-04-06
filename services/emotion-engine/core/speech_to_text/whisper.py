@@ -24,7 +24,6 @@ def get_whisper_model():
     global _whisper_model
     if _whisper_model is None:
         import whisper
-        import torch
 
         # Force CPU for Whisper because MPS often lacks sparse tensor support for this model
         device = "cpu"

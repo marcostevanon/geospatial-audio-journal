@@ -100,8 +100,13 @@ def get_emotions_from_audio(
         if hasattr(confidence, "tolist"):
             confidence = confidence.tolist()
         if isinstance(label, list):
-            for l, c in zip(label, confidence):
-                emotions.append({"emotion": l, "confidence": float(c) * 100})
+            for emotion_label, confidence_val in zip(label, confidence):
+                emotions.append(
+                    {
+                        "emotion": emotion_label,
+                        "confidence": float(confidence_val) * 100,
+                    }
+                )
         else:
             emotions.append({"emotion": label, "confidence": float(confidence) * 100})
         return emotions[:5]
