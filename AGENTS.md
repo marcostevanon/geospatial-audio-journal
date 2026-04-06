@@ -13,6 +13,12 @@ and maps results onto historical geospatial data.
 - Telegram: TypeScript, MTProto (services/telegram/)
 - Infra: Docker Compose, Redis 7
 
+**Architecture Decisions:**
+- Firebase (Firestore + Storage) for data persistence (no PostgreSQL/PostGIS at this stage)
+- BullMQ + Redis for job queue — HTTP handler enqueues, worker processes
+- Architecture decisions MUST be logged in `docs/decisions/` as ADRs
+- Follow existing file patterns — avoid large monorepo abstractions unless explicitly directed
+
 ---
 
 ## Agent Team (4 agents)
