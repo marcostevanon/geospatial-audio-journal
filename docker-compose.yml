@@ -10,54 +10,56 @@ services:
     networks:
       - app-network
 
-  emotion-engine:
-    build:
-      context: ./services/emotion-engine
-      dockerfile: Dockerfile.dev
-    container_name: geospatial-emotion-engine
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./services/emotion-engine:/app
-      - ml_cache:/app/.cache
-    restart: unless-stopped
-    env_file:
-      - ./services/emotion-engine/.env.local
-    healthcheck:
-      test: [ "CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")' || exit 1" ]
-      interval: 20s
-      timeout: 10s
-      retries: 30
-      start_period: 300s
-    networks:
-      - app-network
+  # emotion-engine:
+  #   build:
+  #     context: ./services/emotion-engine
+  #     dockerfile: Dockerfile.dev
+  #   container_name: geospatial-emotion-engine
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ./services/emotion-engine:/app
+  #     - ml_cache:/app/.cache
+  #   restart: unless-stopped
+  #   env_file:
+  #     - ./services/emotion-engine/.env.local
+  #   healthcheck:
+  #     test: [ "CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")' || exit 1" ]
+  #     interval: 20s
+  #     timeout: 10s
+  #     retries: 30
+  #     start_period: 300s
+  #   networks:
+  #     - app-network
 
   worker:
-    build:
-      context: ./services/worker
-      dockerfile: Dockerfile.dev
+    image: node:22-alpine
     container_name: geospatial-worker
+    network_mode: "host"
     volumes:
       - ./services/worker:/app
     env_file:
       - ./services/worker/.env.local
     environment:
       - REDIS_URL=redis://redis:6379
-      - EMOTION_ENGINE_URL=http://emotion-engine:8000/api/audio/emotion
+      - EMOTION_ENGINE_URL=http://host.docker.internal:8000/api/audio/emotion
     restart: unless-stopped
     depends_on:
       redis:
         condition: service_started
-      emotion-engine:
-        condition: service_healthy
-    networks:
-      - app-network
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+    # networks:
+    #   - app-network
+    command: sh -c "npm run dev"
 
   web:
-    build:
-      context: ./services/web
-      dockerfile: Dockerfile.dev
+    # build:
+    #   context: ./services/web
+    #   dockerfile: Dockerfile.dev
+    image: node:22-alpine
     container_name: geospatial-web
+    network_mode: "host"
     ports:
       - "3000:3000"
     volumes:
@@ -66,27 +68,29 @@ services:
       - ./services/web/.env.local
     environment:
       - REDIS_URL=redis://redis:6379
-      - CHOKIDAR_USEPOLLING=true
     restart: unless-stopped
-    depends_on:
-      - worker
-    networks:
-      - app-network
+    # depends_on:
+    #   - worker
+    # networks:
+    #   - app-network
+    command: sh -c "npm run dev"
 
   telegram:
-    build:
-      context: ./services/telegram
-      dockerfile: Dockerfile.dev
+    image: node:22-alpine
     container_name: geospatial-telegram
+    network_mode: "host"
+    volumes:
+      - ./services/telegram:/app
     env_file:
       - ./services/telegram/.env.local
     restart: unless-stopped
-    networks:
-      - app-network
+    # networks:
+    #   - app-network
+    command: sh -c "npm run dev"
 
 volumes:
   redis_data:
-  ml_cache:
+  # ml_cache:
 
 
 networks:

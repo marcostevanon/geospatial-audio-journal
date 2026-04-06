@@ -40,10 +40,19 @@ def get_speechbrain_model():
         _speechbrain_model = EncoderClassifier.from_hparams(
             source=SPEECHBRAIN_MODEL_ID,
             savedir=SPEECHBRAIN_MODEL_DIR,
-            run_opts={"device": device},
         )
+        _speechbrain_model.to(device)
         logger.info("SpeechBrain model loaded successfully.")
     return _speechbrain_model
+
+
+def _get_device():
+    """Get the device for model inference."""
+    if torch.backends.mps.is_available():
+        return "mps"
+    elif torch.cuda.is_available():
+        return "cuda"
+    return "cpu"
 
 
 def get_emotions_from_audio(
@@ -79,28 +88,26 @@ def get_emotions_from_audio(
         waveform = waveform / waveform.abs().max()
     if waveform.ndim > 1:
         waveform = waveform.mean(dim=1)
-    waveform = waveform.unsqueeze(0)
-    # Model inference
+    # Model inference using the classify method
     model = get_speechbrain_model()
-    waveform = waveform.to(next(model.mods.wav2vec2.parameters()).device)
-    wav_lens = torch.tensor([1.0]).to(waveform.device)
-    feats = model.mods.wav2vec2(waveform, wav_lens)
-    outputs = model.mods.output_mlp(feats)
-    probs = torch.nn.functional.softmax(outputs, dim=-1)
-    probs = probs.mean(dim=1).squeeze().tolist()
-    # Top emotions
-    top_k = min(5, len(probs))
-    top_k_idx = torch.topk(torch.tensor(probs), top_k).indices.tolist()
-    valid_indices = [
-        idx for idx in top_k_idx if idx in model.hparams.label_encoder.ind2lab
-    ]
-    return [
-        {
-            "emotion": model.hparams.label_encoder.ind2lab[idx],
-            "confidence": float(probs[idx]) * 100,
-        }
-        for idx in valid_indices
-    ]
+    device = _get_device()
+    waveform = waveform.to(device)
+    try:
+        label, confidence, _ = model.classify(waveform)
+        emotions = []
+        if hasattr(label, "tolist"):
+            label = label.tolist()
+        if hasattr(confidence, "tolist"):
+            confidence = confidence.tolist()
+        if isinstance(label, list):
+            for l, c in zip(label, confidence):
+                emotions.append({"emotion": l, "confidence": float(c) * 100})
+        else:
+            emotions.append({"emotion": label, "confidence": float(confidence) * 100})
+        return emotions[:5]
+    except Exception as e:
+        logger.error(f"SpeechBrain classification failed: {e}")
+        return [{"emotion": "neutral", "confidence": 50.0}]
 
 
 def split_audio_into_chunks(

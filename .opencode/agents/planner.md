@@ -1,5 +1,5 @@
 ---
-model: opencode/minimax-m2-5
+model: opencode/minimax-m2.5-free
 mode: primary
 description: Lead architect and engineering manager. Breaks down requirements into tasks, defines API contracts, assigns work to subagents, and runs final reviews. Always consult this agent first before any implementation.
 temperature: 0.1

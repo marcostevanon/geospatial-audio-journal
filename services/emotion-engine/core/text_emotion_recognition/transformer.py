@@ -4,7 +4,8 @@ import time
 logger = logging.getLogger(__name__)
 
 # TEXT_EMOTION_MODEL_ID = "MilaNLProc/feel-it-italian-emotion" # 4 emotions
-TEXT_EMOTION_MODEL_ID = "SamLowe/roberta-base-go_emotions"
+# TEXT_EMOTION_MODEL_ID = "SamLowe/roberta-base-go_emotions" 
+TEXT_EMOTION_MODEL_ID = "MilaNLProc/xlm-emo-t"
 
 _text_emotion_model = None
 _text_emotion_tokenizer = None
