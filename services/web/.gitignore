@@ -4,3 +4,9 @@
 /build
 /coverage
 /.vercel
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+.env.keys

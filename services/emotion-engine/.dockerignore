@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.eggs/
+*.egg-info/
+*.egg
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+
+# Cache
+.cache/
+wav2vec2_checkpoints/
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# OS
+.DS_Store

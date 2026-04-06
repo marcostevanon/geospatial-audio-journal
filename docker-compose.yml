@@ -19,24 +19,16 @@ services:
       - "8000:8000"
     volumes:
       - ./services/emotion-engine:/app
-      # - ./services/emotion-engine/.cache:/app/.cache
       - ml_cache:/app/.cache
     restart: unless-stopped
+    env_file:
+      - ./services/emotion-engine/.env.local
     healthcheck:
       test: [ "CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")' || exit 1" ]
       interval: 20s
       timeout: 10s
       retries: 30
       start_period: 300s
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 8G
-    #     reservations:
-    #       memory: 4G
-    environment:
-      - HF_HOME=/app/.cache
-      - SPEECHBRAIN_CACHE=/app/.cache
     networks:
       - app-network
 
@@ -47,14 +39,11 @@ services:
     container_name: geospatial-worker
     volumes:
       - ./services/worker:/app
-      - ./secrets:/app/secrets
     env_file:
-      - ./secrets/worker.env
+      - ./services/worker/.env.local
     environment:
-      - FIREBASE_SERVICE_ACCOUNT_PATH=/app/secrets/service-account.json
       - REDIS_URL=redis://redis:6379
       - EMOTION_ENGINE_URL=http://emotion-engine:8000/api/audio/emotion
-      - CHOKIDAR_USEPOLLING=true
     restart: unless-stopped
     depends_on:
       redis:
@@ -73,15 +62,25 @@ services:
       - "3000:3000"
     volumes:
       - ./services/web:/app
-      - ./secrets:/app/secrets
     env_file:
-      - ./secrets/web.env
+      - ./services/web/.env.local
     environment:
       - REDIS_URL=redis://redis:6379
       - CHOKIDAR_USEPOLLING=true
     restart: unless-stopped
     depends_on:
       - worker
+    networks:
+      - app-network
+
+  telegram:
+    build:
+      context: ./services/telegram
+      dockerfile: Dockerfile.dev
+    container_name: geospatial-telegram
+    env_file:
+      - ./services/telegram/.env.local
+    restart: unless-stopped
     networks:
       - app-network
 

@@ -1,4 +1,4 @@
-# worker specific
+# telegram specific
 /node_modules/
 /dist/
 
@@ -7,4 +7,3 @@
 .env.local
 .env.*.local
 .env.keys
-service-account.json
