@@ -116,7 +116,9 @@ def get_emotions_from_audio(
 
 
 def split_audio_into_chunks(
-    audio_array: np.ndarray, chunk_duration_sec: float = 30.0, sample_rate: int = 16000
+    audio_array: np.ndarray,
+    chunk_duration_sec: float = 30.0,
+    sample_rate: float = 16000,
 ):
     """
     Split audio into non-overlapping chunks of chunk_duration_sec seconds.
@@ -132,7 +134,7 @@ def split_audio_into_chunks(
     return chunks
 
 
-def analyze_and_aggregate_emotions(audio_array: np.ndarray, sample_rate: int = 16000):
+def analyze_and_aggregate_emotions(audio_array: np.ndarray, sample_rate: float = 16000):
     """
     Split audio, analyze each chunk, return per-chunk emotions and aggregated averages.
     Returns:

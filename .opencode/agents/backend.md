@@ -51,7 +51,7 @@ services/
 **API Endpoints:**
 ```
 POST /api/audio/transcribe    → {transcription, language, average_confidence}
-POST /api/audio/emotion       → {whisper: {...}, speechbrain: {...}}
+POST /api/analyze             → {whisper: {...}, speechbrain: {...}}
 POST /api/audio/analyze       → {transcription, language, emotions, timing}
 ```
 

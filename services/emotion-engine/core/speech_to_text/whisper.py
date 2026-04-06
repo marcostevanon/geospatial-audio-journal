@@ -38,7 +38,7 @@ def get_whisper_model():
     return _whisper_model
 
 
-def transcribe_audio(audio_array: np.ndarray, sample_rate: int = 16000) -> dict:
+def transcribe_audio(audio_array: np.ndarray, sample_rate: float = 16000) -> dict:
     """
     Transcribe a full audio numpy array using Whisper.
     Returns a dict with transcription, language, and segments.

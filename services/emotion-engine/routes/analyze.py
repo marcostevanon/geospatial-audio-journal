@@ -1,8 +1,9 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
 import warnings
 import time
 import librosa
+
+from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse
 
 from core.speech_to_text.whisper import transcribe_audio
 from core.text_emotion_recognition.transformer import get_emotions_from_text
@@ -48,6 +49,7 @@ async def analyze_full(file: UploadFile = File(...)):
     try:
         # 1. Load audio
         audio_array, sampling_rate = load_audio(file)
+        duration = round(len(audio_array) / sampling_rate, 2)
 
         # 2. Transcribe audio (Whisper)
         start_transcribe = time.time()
@@ -75,9 +77,11 @@ async def analyze_full(file: UploadFile = File(...)):
         if not transcription_text.strip():
             return JSONResponse(
                 content={
-                    "transcription": "",
+                    "transcription": transcription_text,
                     "language": whisper_result.get("language", "unknown"),
                     "average_confidence": whisper_result.get("average_confidence", 0.0),
+                    "duration": duration,
+                    "emotions": combined_audio_emotions,
                     "audio_emotions": combined_audio_emotions,
                     "text_emotions": {},
                     "whisper_emotions": whisper_emotions,
@@ -99,11 +103,16 @@ async def analyze_full(file: UploadFile = File(...)):
             transcription_time + audio_emotion_time + text_emotion_time, 2
         )
 
+        # Merge all emotions into single dict for backward compatibility
+        all_emotions = {**combined_audio_emotions, **text_emotions}
+
         return JSONResponse(
             content={
                 "transcription": transcription_text,
                 "language": whisper_result.get("language", "unknown"),
                 "average_confidence": whisper_result.get("average_confidence", 0.0),
+                "duration": duration,
+                "emotions": all_emotions,
                 "audio_emotions": combined_audio_emotions,
                 "text_emotions": text_emotions,
                 "whisper_emotions": whisper_emotions,

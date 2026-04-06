@@ -42,7 +42,7 @@ services:
       - ./services/worker/.env.local
     environment:
       - REDIS_URL=redis://redis:6379
-      - EMOTION_ENGINE_URL=http://host.docker.internal:8000/api/audio/emotion
+      - EMOTION_ENGINE_URL=http://host.docker.internal:8000/api/analyze
     restart: unless-stopped
     depends_on:
       redis:
