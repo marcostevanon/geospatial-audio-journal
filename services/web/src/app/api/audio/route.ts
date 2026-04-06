@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { audioQueue } from '../../../lib/redis';
+import type { AudioAnalysisJob } from '../../../types';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { fileName, fileUrl, docId, duration } = body;
+    const { fileName, fileUrl, docId, duration } = body as Partial<AudioAnalysisJob>;
 
     if (!fileName || !fileUrl) {
       return NextResponse.json(
@@ -13,11 +14,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // Enqueue the job for the worker
     const job = await audioQueue.add('analyze-audio', {
       fileName,
       fileUrl,
-      docId,
+      docId: docId || '',
       duration,
       userId: 'anonymous',
     });

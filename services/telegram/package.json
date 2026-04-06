@@ -5,6 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
     "start": "node dist/index.js",
     "dev": "ts-node src/telegram-test.ts",
     "watch": "tsc -w"

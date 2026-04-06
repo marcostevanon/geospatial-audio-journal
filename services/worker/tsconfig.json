@@ -9,8 +9,8 @@
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
     "target": "esnext",
-    "types": [],
-    // For nodejs:
+    "moduleResolution": "nodenext",
+    "esModuleInterop": true,
     // "lib": ["esnext"],
     // "types": ["node"],
     // and npm install -D @types/node

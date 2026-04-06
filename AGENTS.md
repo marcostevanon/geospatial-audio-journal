@@ -77,3 +77,33 @@ Reviewer output format:
 ### 8. No Hardcoded Secrets
 Any agent finding a hardcoded secret must STOP and report it immediately.
 All secrets via environment variables in `secrets/` folder — never commit real credentials.
+
+### 9. Code Quality Gate
+After any code changes, ALWAYS run the appropriate lint/typecheck commands to verify the code is correct.
+
+**For TypeScript services (web, worker, telegram):**
+```bash
+# Navigate to service
+cd services/<service-name>
+
+# TypeScript check (compilation + type safety)
+npm run build    # or: npx tsc --noEmit
+
+# Lint (if available)
+npm run lint
+```
+
+**For Python services (emotion-engine):**
+```bash
+# Install ruff for fast Python linting
+pip install ruff
+
+# Run ruff on emotion-engine
+ruff check services/emotion-engine/
+```
+
+**If linting or type checking fails:**
+- DO NOT commit the changes
+- Fix the errors first
+- Re-run the check until it passes
+- Ask user for help if you're unsure how to fix

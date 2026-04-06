@@ -1,22 +1,11 @@
 'use client';
 
-import { collection as fsCollection, onSnapshot as fsOnSnapshot, orderBy as fsOrderBy, query as fsQuery } from 'firebase/firestore';
+import { collection as fsCollection, onSnapshot as fsOnSnapshot, orderBy as fsOrderBy, query as fsQuery, Timestamp } from 'firebase/firestore';
 import { AnimatePresence } from 'framer-motion';
 import { Clock, FileText, Loader2, Pause, Play, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { db } from '../lib/firebase';
-
-interface VoiceNote {
-  id: string;
-  fileName: string;
-  fileUrl: string;
-  createdAt: any;
-  duration: number;
-  emotions: any;
-  transcript: string;
-  status?: string;
-  language?: string;
-}
+import { VoiceNote } from '../types';
 
 export default function VoiceNotesList() {
   const [notes, setNotes] = useState<VoiceNote[]>([]);
@@ -32,7 +21,19 @@ export default function VoiceNotesList() {
     const unsubscribe = fsOnSnapshot(q, (snapshot) => {
       const fetchedNotes: VoiceNote[] = [];
       snapshot.forEach((doc) => {
-        fetchedNotes.push({ id: doc.id, ...doc.data() } as VoiceNote);
+        const data = doc.data();
+        fetchedNotes.push({
+          id: doc.id,
+          fileName: data.fileName || '',
+          fileUrl: data.fileUrl || '',
+          userId: data.userId || '',
+          createdAt: data.createdAt instanceof Timestamp ? data.createdAt : null,
+          duration: data.duration || 0,
+          emotions: data.emotions || {},
+          transcript: data.transcript || '',
+          status: data.status || 'pending',
+          language: data.language || '',
+        });
       });
       setNotes(fetchedNotes);
       setLoading(false);
@@ -132,9 +133,24 @@ function VoiceNoteItem({ note, onOpenTranscript }: { note: VoiceNote; onOpenTran
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  const dateStr = note.createdAt?.toDate ? note.createdAt.toDate().toLocaleDateString(undefined, {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-  }) : 'Just now';
+  const formatDate = (note: VoiceNote): string => {
+    if (!note.createdAt) return 'Just now';
+    try {
+      if (note.createdAt instanceof Timestamp) {
+        return note.createdAt.toDate().toLocaleDateString(undefined, {
+          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+      }
+      if (note.createdAt instanceof Date) {
+        return note.createdAt.toLocaleDateString(undefined, {
+          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+      }
+    } catch {
+      return 'Just now';
+    }
+    return 'Just now';
+  };
 
   // Extract top 3 emotions
   let topEmotions: { label: string; score: number }[] = [];
@@ -158,13 +174,13 @@ function VoiceNoteItem({ note, onOpenTranscript }: { note: VoiceNote; onOpenTran
           {isPlaying ? <Pause className="w-3.5 h-3.5" fill="currentColor" /> : <Play className="w-3.5 h-3.5 translate-x-0.5" fill="currentColor" />}
         </button>
         <div>
-          <div className="text-sm font-medium text-slate-800">{dateStr}</div>
+          <div className="text-sm font-medium text-slate-800">{formatDate(note)}</div>
           <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
               {formatDuration(note.duration)}
             </span>
-            {note.language && (
+            {note.language && typeof note.language === 'string' && (
               <span className="uppercase font-bold tracking-wider text-[9px] bg-slate-200 px-1 py-0.5 rounded text-slate-600">
                 {note.language.slice(0, 2)}
               </span>

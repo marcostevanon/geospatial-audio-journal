@@ -9,14 +9,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import FormData from 'form-data';
+import type { AudioAnalysisJob, AudioAnalysisResponse } from './types.js';
 
 // ESM __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load environment variables from .env or .env.local
-dotenv.config(); // Loads .env
-dotenv.config({ path: path.join(__dirname, '.env.local') }); // Also try .env.local
+dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env.local') });
 
 // Initialize Firebase Admin
 const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
@@ -50,15 +51,6 @@ if (serviceAccountKey || serviceAccountPath) {
 }
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-const connection = new Redis(REDIS_URL, { maxRetriesPerRequest: null }) as any;
-
-interface AudioAnalysisJob {
-  fileUrl: string;
-  fileName: string;
-  userId?: string;
-  docId: string;
-  duration?: number;
-}
 
 const worker = new Worker('audio-analysis', async (job: Job<AudioAnalysisJob>) => {
   console.log(`Processing job ${job.id} for file: ${job.data.fileName}`);
@@ -84,9 +76,14 @@ const worker = new Worker('audio-analysis', async (job: Job<AudioAnalysisJob>) =
 
     const engineUrl = process.env.EMOTION_ENGINE_URL || 'http://localhost:8000/api/audio/analyze';
 
-    const response = await axios.post(engineUrl, form, {
-      headers: { ...(form as any).getHeaders() }
+    const response = await axios.post<AudioAnalysisResponse>(engineUrl, form, {
+      headers: { ...(form as any).getHeaders() },
+      timeout: 60000,
     });
+
+    if (!response.data) {
+      throw new Error('Empty response from emotion-engine');
+    }
 
     console.log(`Analysis complete for job ${job.id}.`);
     console.log(response.data)
@@ -94,10 +91,10 @@ const worker = new Worker('audio-analysis', async (job: Job<AudioAnalysisJob>) =
     // 3. Update results in Firestore
     const db = getFirestore();
     const updateData = {
-      duration: response.data.duration || job.data.duration || 0,
-      emotions: response.data.emotions || {},
-      transcript: response.data.transcription || '',
-      language: response.data.language || '',
+      duration: response.data?.duration ?? job.data.duration ?? 0,
+      emotions: response.data?.emotions ?? {},
+      transcript: response.data?.transcription ?? '',
+      language: response.data?.language ?? '',
       status: 'completed'
     };
 
@@ -123,10 +120,14 @@ const worker = new Worker('audio-analysis', async (job: Job<AudioAnalysisJob>) =
   } finally {
     // Cleanup temp file
     if (fs.existsSync(tempFilePath)) {
-      fs.unlinkSync(tempFilePath);
+      try {
+        fs.unlinkSync(tempFilePath);
+      } catch (cleanupError) {
+        console.warn(`Failed to cleanup temp file ${tempFilePath}:`, cleanupError);
+      }
     }
   }
-}, { connection });
+}, { connection: { host: new URL(REDIS_URL).hostname, port: parseInt(new URL(REDIS_URL).port) || 6379 } });
 
 worker.on('completed', (job: Job) => {
   console.log(`Job ${job.id} has completed!`);
